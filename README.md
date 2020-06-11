@@ -49,9 +49,9 @@ control.right 十字右
 control.up 十字上
 control.down 十字下
 control.a XBOX基準でAボタン、プロコンBボタン
-control.b XBOX基準でBボタン。プロコンAボタン
-control.x XBOX基準でXボタン。プロコンYボタン
-control.y XBOX基準でYボタン。プロコンXボタン
+control.b XBOX基準でBボタン、プロコンAボタン
+control.x XBOX基準でXボタン、プロコンYボタン
+control.y XBOX基準でYボタン、プロコンXボタン
 control.start スタートボタン / プラスボタン
 ```
 
