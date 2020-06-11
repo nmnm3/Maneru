@@ -68,12 +68,14 @@ DWORD WINAPI GameLoop(PVOID)
 	int garbageMin = 5;
 	int garbageMax = 10;
 	float holeRepeat = 0.5f;
+	bool exactCCMove = true;
 
 	gameConfig->GetValue("next", next);
 	gameConfig->GetValue("delay_at_beginning", delay);
 	gameConfig->GetValue("garbage_min", garbageMin);
 	gameConfig->GetValue("garbage_max", garbageMax);
 	gameConfig->GetValue("hole_repeat", holeRepeat);
+	gameConfig->GetValue("exact_cc_move", exactCCMove);
 
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
@@ -125,17 +127,49 @@ DWORD WINAPI GameLoop(PVOID)
 		else incomingGarbage++;
 	};
 	actions["hard_drop"] = [&]() {
-		if (ccm.hold != holdPressed) return;
-		if (!TestGhost(game.GetGhost(), ccm)) return;
+		bool match = TestGhost(game.GetGhost(), ccm);
+		if (exactCCMove)
+		{
+			if (ccm.hold != holdPressed || !match) return;
+		}
 		game.LockCurrentPiece();
 		game.ClearLines();
 
-		if (incomingGarbage > 0)
+		if (incomingGarbage > 0 || !match)
 		{
 			game.AddGarbage(incomingGarbage, holeRepeat);
 			incomingGarbage = 0;
 			GameBoard gb = game.GetBoard();
-			cc.ResetBot(gb.field);
+			MinoType mt = game.GetHoldPiece();
+			if (!match)
+			{
+				// Need to do a hard reset. Destroy current CC handle,
+				// restart from board, bag, hold piece.
+				int bagPieceRemain = 7 - game.GetPieceIndex() % 7;
+				int bagMask = 0;
+				if (bagPieceRemain > game.RemainingNext())
+					bagPieceRemain = game.RemainingNext();
+				for (int i = 0; i < bagPieceRemain; i++)
+				{
+					bagMask |= (1 << game.GetNextPiece(i));
+				}
+				if (mt == PieceNone)
+				{
+					cc.HardReset(nullptr, gb.field, bagMask);
+				}
+				else
+				{
+					CCPiece p = (CCPiece)mt;
+					cc.HardReset(&p, gb.field, bagMask);
+				}
+
+				for (int i = 0; i < game.RemainingNext(); i++)
+				{
+					cc.AddPiece(game.GetNextPiece(i));
+				}
+			}
+			else
+				cc.SoftReset(gb.field);
 		}
 		running = game.SpawnCurrentPiece();
 		if (!running)
@@ -146,12 +180,17 @@ DWORD WINAPI GameLoop(PVOID)
 		pickNext();
 		std::unique_lock<std::mutex> l(nextLock);
 		plan = cc.Next(ccm);
+		if (plan.n == 0)
+		{
+			MessageBox(0, L"CCがパニックに陥た", L"", 0);
+			ExitProcess(0);
+		}
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
 	};
 
-	actions["hold"] = [&holdPressed, &ccm]() {
-		if (holdPressed == ccm.hold) return;
+	actions["hold"] = [&]() {
+		if (exactCCMove && holdPressed == ccm.hold) return;
 		game.HoldCurrentPiece();
 		holdPressed = !holdPressed;
 	};

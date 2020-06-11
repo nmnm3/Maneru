@@ -74,6 +74,7 @@ public:
 	void SetColor(int x, int y, MinoType color);
 	MinoType GetColor(int x, int y) const;
 	int RemainingNext() const;
+	int GetPieceIndex() const;
 
 	GameBoard GetBoard() const;
 private:
@@ -82,6 +83,7 @@ private:
 	Tetrimino current;
 
 	MinoType hold;
+	int pieceIndex;
 	std::deque<MinoType> next;
 	std::mutex m;
 };

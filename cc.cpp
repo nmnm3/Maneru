@@ -7,8 +7,6 @@ CCBot::CCBot()
 {
 	ConfigNode n = GetGlobalConfig()->GetNode("cc");
 
-	CCOptions options;
-	CCWeights weights;
 	cc_default_options(&options);
 	cc_default_weights(&weights);
 	n.GetValue("min_nodes", options.min_nodes);
@@ -51,6 +49,11 @@ CCPlan CCBot::Next(CCMove & m)
 	cc_request_next_move(bot, 0);
 	uint32_t size = MAX_NEXT_MOVE;
 	CCBotPollStatus status = cc_block_next_move(bot, &m, plans, &size);
+	if (status != CC_MOVE_PROVIDED)
+	{
+		return CCPlan{ nullptr, 0 };
+	}
+
 	int ymap[40];
 	for (int i = 0; i < 40; i++)
 	{
@@ -68,6 +71,7 @@ CCPlan CCBot::Next(CCMove & m)
 		{
 			int c = p.cleared_lines[j];
 			if (c == -1) continue;
+			if (c < 0 || c > 40) __debugbreak();
 			for (int k = c; k < 39; k++)
 			{
 				ymap[k] = ymap[k + 1];
@@ -78,7 +82,13 @@ CCPlan CCBot::Next(CCMove & m)
 	return CCPlan{ plans, size };
 }
 
-void CCBot::ResetBot(bool * board)
+void CCBot::HardReset(CCPiece * hold, bool* board, int remainBagMask)
+{
+	cc_destroy_async(bot);
+	bot = cc_launch_with_board_async(&options, &weights, board, remainBagMask, hold, false, 0);
+}
+
+void Maneru::CCBot::SoftReset(bool * board)
 {
 	cc_reset_async(bot, board, 0, 0);
 }

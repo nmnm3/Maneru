@@ -129,6 +129,7 @@ TetrisGame::TetrisGame()
 	}
 	hold = PieceNone;
 	current.type = PieceNone;
+	pieceIndex = 0;
 }
 
 void TetrisGame::PushNextPiece(MinoType t)
@@ -155,6 +156,7 @@ MinoType TetrisGame::PopNextPiece()
 {
 	MinoType piece = next.front();
 	next.pop_front();
+	pieceIndex++;
 	return piece;
 }
 
@@ -215,6 +217,7 @@ bool TetrisGame::SpawnCurrentPiece()
 	current.py = VISIBLE_LINES - 3;
 	current.state = 0;
 	next.pop_front();
+	pieceIndex++;
 
 	LineRect rect;
 	rect.lines = board + current.py;
@@ -421,6 +424,8 @@ bool TetrisGame::ClearLines()
 
 void TetrisGame::AddGarbage(int lines, float holeRepeat)
 {
+	if (lines == 0) return;
+
 	std::default_random_engine e;
 	e.seed(std::random_device()());
 	std::uniform_real_distribution<> distRepeat(0.0, 1.0);
@@ -472,6 +477,11 @@ MinoType TetrisGame::GetColor(int x, int y) const
 int TetrisGame::RemainingNext() const
 {
 	return next.size();
+}
+
+int Maneru::TetrisGame::GetPieceIndex() const
+{
+	return pieceIndex;
 }
 
 GameBoard TetrisGame::GetBoard() const

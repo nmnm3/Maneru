@@ -22,9 +22,12 @@ public:
 	~CCBot();
 	void AddPiece(int p);
 	CCPlan Next(CCMove& m);
-	void ResetBot(bool* board);
+	void HardReset(CCPiece* hold, bool* board, int remainBagMask);
+	void SoftReset(bool* board);
 private:
 	CCAsyncBot* bot;
+	CCOptions options;
+	CCWeights weights;
 	CCPlanPlacement plans[MAX_NEXT_MOVE];
 };
 
