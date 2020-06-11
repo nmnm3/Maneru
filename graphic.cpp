@@ -11,10 +11,10 @@
 using namespace Maneru;
 using D2D1::ColorF;
 
-const int MINO_SIZE = 20;
-const int BOARD_LEFT = 150;
-const int TEXT_LINE_SIZE = 50;
-const int TEXT_FONT_SIZE = 20;
+const int MINO_SIZE_BASE = 20;
+const int BOARD_LEFT_BASE = 150;
+const int TEXT_LINE_SIZE_BASE = 50;
+const int TEXT_FONT_SIZE_BASE = 20;
 
 POINT PieceRect[7][4] =
 {
@@ -45,10 +45,24 @@ ColorF brushColors[] =
 class GraphicEngine : public GraphicEngineInterface
 {
 public:
-	virtual void SetFPS(int fps)
+	GraphicEngine(HWND hwnd, float magnify, int fps) :
+		hwnd(hwnd),
+		refreshFrequency{},
+		d2dev{},
+		d2dctx{},
+		swapchain{},
+		renderTarget{},
+		textFormat{},
+		textBrush{},
+		minoBrush{},
+		fps(fps)
 	{
 		QueryPerformanceFrequency(&refreshFrequency);
 		refreshFrequency.QuadPart /= fps;
+		MINO_SIZE = MINO_SIZE_BASE * magnify;
+		BOARD_LEFT = BOARD_LEFT_BASE * magnify;
+		TEXT_LINE_SIZE = TEXT_LINE_SIZE_BASE * magnify;
+		TEXT_FONT_SIZE = TEXT_FONT_SIZE_BASE * magnify;
 	}
 	virtual void StartDraw()
 	{
@@ -167,12 +181,14 @@ public:
 		DrawBoard(game);
 		DrawPieceView(game.GetHoldPiece(), 0, 0);
 		int r = game.RemainingNext();
+		int pieceLeft1 = BOARD_LEFT + MINO_SIZE * 12;
+		int pieceLeft2 = pieceLeft1 + MINO_SIZE * 5;
 		for (int i = 0; i < 4; i++)
 		{
 			if (i < r)
-				DrawPieceView(game.GetNextPiece(i), 400, i * MINO_SIZE * 5);
+				DrawPieceView(game.GetNextPiece(i), pieceLeft1, i * MINO_SIZE * 5);
 			if (i + 4 < r)
-				DrawPieceView(game.GetNextPiece(i+4), 500, i * MINO_SIZE * 5);
+				DrawPieceView(game.GetNextPiece(i+4), pieceLeft2, i * MINO_SIZE * 5);
 		}
 		DrawCurrentPiece(game.GetCurrentPiece());
 	}
@@ -231,7 +247,7 @@ public:
 				D2D1_LAYER_OPTIONS_NONE);
 
 		renderTarget->PushLayer(params, layer);
-		float stroke = 2.0;
+		float stroke = MINO_SIZE / 10.0;
 		for (int i = 0; i < 4; i++)
 		{
 			unsigned char xx = x[i];
@@ -253,10 +269,10 @@ public:
 		// TODO: do something...
 	}
 
-	bool Init(HWND hWnd)
+	bool Init()
 	{
 		HRESULT hr;
-		if (!InitDevice3D(hWnd))
+		if (!InitDevice3D(hwnd))
 		{
 			return false;
 		}
@@ -286,9 +302,6 @@ public:
 			L"",
 			&textFormat);
 		if (FAILED(hr)) return false;
-
-		this->hwnd = hWnd;
-		this->SetFPS(60);
 		return true;
 	}
 
@@ -303,6 +316,11 @@ private:
 	ID2D1SolidColorBrush* textBrush;
 
 	ID2D1SolidColorBrush* minoBrush[ARRAYSIZE(brushColors)];
+	int MINO_SIZE;
+	int BOARD_LEFT;
+	int TEXT_LINE_SIZE;
+	int TEXT_FONT_SIZE;
+	int fps;
 
 	bool InitDevice3D(HWND hwnd)
 	{
@@ -325,7 +343,7 @@ private:
 		DXGI_SWAP_CHAIN_DESC desc = {};
 		desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 		desc.BufferDesc.RefreshRate.Numerator = 1;
-		desc.BufferDesc.RefreshRate.Denominator = 60;
+		desc.BufferDesc.RefreshRate.Denominator = fps;
 		desc.OutputWindow = hwnd;
 		desc.Windowed = true;
 		desc.SampleDesc.Count = 1;
@@ -376,10 +394,10 @@ private:
 	}
 };
 
-GraphicEngineInterface* Maneru::InitGraphicEngine(HWND hwnd)
+GraphicEngineInterface* Maneru::InitGraphicEngine(HWND hwnd, float magnify, int fps)
 {
-	GraphicEngine* engine = new GraphicEngine();
-	if (engine->Init(hwnd))
+	GraphicEngine* engine = new GraphicEngine(hwnd, magnify, fps);
+	if (engine->Init())
 		return engine;
 	else
 	{

@@ -1,5 +1,7 @@
 初期操作設定は99と同じ、十字のみ対応。CCが見えるnextは7個、使うコアは一つで読みは10万通りまで。
 重力はなく最後はハードドロップが必要。もし置いた場所がCCの読みとは違ったら操作は無効化される。
+火力を受けたいときはプラスボタンでライン数を調整して次のハードドロップで下穴が来る。
+初期設定のCCは動作確認が目的なので、PCに余裕があるならcc.max_nodesとcc.threadsを上げることがおすすめ。
 
 AY：時計回り回転
 BX：反時計回り回転
@@ -21,6 +23,7 @@ game.garbage_max 受ける最大火力
 game.hole_repeat 穴ばら率、0=完全穴ばら、1.0=完全直列
 
 グラフィック
+graphic.resolution 解像度。600x400、900x600、1200x800のみ対応
 graphic.fps 毎秒フレーム数
 graphic.hint_flash_cycle 次の置き場所の点滅周期
 graphic.hint_min_opacity 次の置き場所の最小透過度
@@ -32,9 +35,9 @@ control.right 十字右
 control.up 十字上
 control.down 十字下
 control.a XBOX基準でAボタン、プロコンBボタン
-control.b XBOX基準でBボタン。プロコンAボタン
-control.x XBOX基準でXボタン。プロコンYボタン
-control.y XBOX基準でYボタン。プロコンXボタン
+control.b XBOX基準でBボタン、プロコンAボタン
+control.x XBOX基準でXボタン、プロコンYボタン
+control.y XBOX基準でYボタン、プロコンXボタン
 control.start スタートボタン / プラスボタン
 
 ボタン機能

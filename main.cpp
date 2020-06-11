@@ -19,6 +19,9 @@ using std::function;
 ControllerInterface *ctrl;
 GraphicEngineInterface* engine;
 TetrisGame globalgame;
+ConfigNode *gameConfig;
+ConfigNode *controlConfig;
+ConfigNode *graphicConfig;
 
 HANDLE hThread;
 bool running = true;
@@ -58,10 +61,6 @@ bool LineCleared(const CCPlanPlacement& plan)
 
 DWORD WINAPI GameLoop(PVOID)
 {
-	ConfigNode *global = GetGlobalConfig();
-	ConfigNode gameConfig = global->GetNode("game");
-	ConfigNode controlConfig = global->GetNode("control");
-	ConfigNode graphicConfig = global->GetNode("graphic");
 	LARGE_INTEGER freq, last, now;
 
 	int next = 7;
@@ -70,23 +69,19 @@ DWORD WINAPI GameLoop(PVOID)
 	int garbageMax = 10;
 	float holeRepeat = 0.5f;
 
-	gameConfig.GetValue("next", next);
-	gameConfig.GetValue("delay_at_beginning", delay);
-	gameConfig.GetValue("garbage_min", garbageMin);
-	gameConfig.GetValue("garbage_max", garbageMax);
-	gameConfig.GetValue("hole_repeat", holeRepeat);
+	gameConfig->GetValue("next", next);
+	gameConfig->GetValue("delay_at_beginning", delay);
+	gameConfig->GetValue("garbage_min", garbageMin);
+	gameConfig->GetValue("garbage_max", garbageMax);
+	gameConfig->GetValue("hole_repeat", holeRepeat);
 
-
-	int fps = 60;
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
 	float planOpacity = 0.2f;
-	graphicConfig.GetValue("fps", fps);
-	graphicConfig.GetValue("hint_flash_cycle", hintFlashCycle);
-	graphicConfig.GetValue("hint_min_opacity", hintMinOpacity);
-	graphicConfig.GetValue("plan_opacity", planOpacity);
+	graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
+	graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
+	graphicConfig->GetValue("plan_opacity", planOpacity);
 
-	engine->SetFPS(fps);
 	QueryPerformanceFrequency(&freq);
 	srand(GetTickCount());
 	CCBot cc;
@@ -179,12 +174,12 @@ DWORD WINAPI GameLoop(PVOID)
 	for (const auto& m : mapping)
 	{
 		string action = m.second;
-		if (!controlConfig.GetValue(m.first, action))
+		if (!controlConfig->GetValue(m.first, action))
 			continue;
 		auto it = actions.find(action);
 		if (it != actions.end())
 		{
-			ConfigNode ratecfg = controlConfig.GetNode(m.first);
+			ConfigNode ratecfg = controlConfig->GetNode(m.first);
 			float repeatDelay = 0;
 			float repeatRate = 0;
 			ratecfg.GetValue("repeat_delay", repeatDelay);
@@ -318,6 +313,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 }
+
+const int BASE_WIDTH = 600;
+const int BASE_HEIGHT = 400;
+
+float GetResolutionMagnifyFactor()
+{
+	string resolution = "600x400";
+	graphicConfig->GetValue("resolution", resolution);
+	if (resolution == "1200x800")
+	{
+		return 2.0f;
+	}
+	if (resolution == "900x600")
+	{
+		return 1.5f;
+	}
+	return 1.0f;
+}
+
 int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
@@ -327,12 +341,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		MessageBox(0, L"コンフィグ読み込み失敗", L"", 0);
 		ExitProcess(0);
 	}
+
 	std::vector<string> list = GetControllerList();
 	if (list.size() == 0)
 	{
 		MessageBox(0, L"コントローラーが見つかりません", L"", 0);
 		ExitProcess(0);
 	}
+	ConfigNode *global = GetGlobalConfig();
+	ConfigNode gameConfig = global->GetNode("game");
+	ConfigNode controlConfig = global->GetNode("control");
+	ConfigNode graphicConfig = global->GetNode("graphic");
+	::gameConfig = &gameConfig;
+	::controlConfig = &controlConfig;
+	::graphicConfig = &graphicConfig;
+
 	int index = 0;
 	if (list.size() > 1)
 	{
@@ -359,11 +382,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	// register the window class
 	RegisterClassEx(&wc);
+	float magnify = GetResolutionMagnifyFactor();
 
 	int x = 0;
 	int y = 0;
-	int w = 600;
-	int h = 400;
+	int w = BASE_WIDTH * magnify;
+	int h = BASE_HEIGHT * magnify;
 	// create the window and use the result as the handle
 	hWnd = CreateWindowEx(NULL,
 		L"Maneru",    // name of the window class
@@ -385,7 +409,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	CenterWindow(hWnd);
 	ShowWindow(hWnd, nCmdShow);
 
-	engine = InitGraphicEngine(hWnd);
+	int fps = 60;
+	graphicConfig.GetValue("fps", fps);
+	engine = InitGraphicEngine(hWnd, magnify, fps);
 	if (engine == NULL)
 	{
 		MessageBox(0, L"DirectX初期化が失敗しました", 0, 0);
