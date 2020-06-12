@@ -145,19 +145,22 @@ private:
 ControllerInterface* Maneru::OpenController(int index)
 {
 	SDL_GameController *ctrl = SDL_GameControllerOpen(index);
-	if (ctrl == 0) __debugbreak();
+	if (ctrl == nullptr) return nullptr;
 	return new Controller(ctrl);
 }
 
-std::vector<std::string> Maneru::GetControllerList()
+ControllerList Maneru::GetControllerList()
 {
 	SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-	std::vector<std::string> controllers;
+	ControllerList controllers;
 	int n = SDL_NumJoysticks();
 	for (int i = 0; i < n; i++)
 	{
-		const char* name = SDL_GameControllerNameForIndex(i);
-		controllers.push_back(name);
+		if (SDL_IsGameController(i))
+		{
+			const char* name = SDL_GameControllerNameForIndex(i);
+			controllers[name] = i;
+		}
 	}
 	return controllers;
 }

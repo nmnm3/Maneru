@@ -37,6 +37,12 @@ MinoType bag[7] =
 	PieceJ,
 };
 
+void Fatal(LPCWSTR message)
+{
+	MessageBox(0, message, 0, 0);
+	ExitProcess(0);
+}
+
 bool TestGhost(const Tetrimino& ghost, const CCMove& ccm)
 {
 	const BlockPosition& pos = ghost.GetPosition();
@@ -179,7 +185,8 @@ DWORD WINAPI GameLoop(PVOID)
 		running = game.SpawnCurrentPiece();
 		if (!running)
 		{
-			MessageBox(0, L"ゲームオーバー", L"ゲームオーバー", 0);
+
+			Fatal(L"ゲームオーバー");
 			return;
 		}
 		pickNext();
@@ -187,8 +194,7 @@ DWORD WINAPI GameLoop(PVOID)
 		plan = cc.Next(ccm);
 		if (plan.n == 0)
 		{
-			MessageBox(0, L"CCがパニックに陥た", L"", 0);
-			ExitProcess(0);
+			Fatal(L"CCがパニックに陥た");
 		}
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
@@ -385,22 +391,42 @@ float GetResolutionMagnifyFactor()
 	return 1.0f;
 }
 
+void SetupController(HINSTANCE hInstance)
+{
+	ControllerList list = GetControllerList();
+	if (list.size() == 0)
+	{
+		Fatal(L"コントローラーが見つかりません");
+	}
+
+	std::vector<std::string> names;
+	for (const auto& p : list)
+	{
+		names.push_back(p.first);
+	}
+	int index = 0;
+	if (list.size() > 1)
+	{
+		index = DialogBoxParam(hInstance, (LPCWSTR)IDD_DIALOG1, 0, DlgProc, (LPARAM)&names);
+	}
+	index = list[names[index]];
+	ctrl = OpenController(index);
+	if (ctrl == nullptr)
+	{
+		Fatal(L"コントローラー初期化失敗");
+	}
+}
+
 int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
 	if (!LoadConfig("maneru.config"))
 	{
-		MessageBox(0, L"コンフィグ読み込み失敗", L"", 0);
-		ExitProcess(0);
+		Fatal(L"コンフィグ読み込み失敗");
 	}
+	SetupController(hInstance);
 
-	std::vector<string> list = GetControllerList();
-	if (list.size() == 0)
-	{
-		MessageBox(0, L"コントローラーが見つかりません", L"", 0);
-		ExitProcess(0);
-	}
 	ConfigNode *global = GetGlobalConfig();
 	ConfigNode gameConfig = global->GetNode("game");
 	ConfigNode controlConfig = global->GetNode("control");
@@ -409,13 +435,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	::controlConfig = &controlConfig;
 	::graphicConfig = &graphicConfig;
 
-	int index = 0;
-	if (list.size() > 1)
-	{
-		index = DialogBoxParam(hInstance, (LPCWSTR)IDD_DIALOG1, 0, DlgProc, (LPARAM)&list);
-	}
-	ctrl = OpenController(index);
-	CoInitialize(0);
 	// the handle for the window, filled by a function
 	HWND hWnd;
 	// this struct holds information for the window class
@@ -467,8 +486,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	engine = InitGraphicEngine(hWnd, magnify, fps);
 	if (engine == NULL)
 	{
-		MessageBox(0, L"DirectX初期化が失敗しました", 0, 0);
-		ExitProcess(0);
+		Fatal(L"DirectX初期化が失敗しました");
 	}
 
 	StartGame();

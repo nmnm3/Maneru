@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <functional>
-#include <vector>
+#include <map>
 #include <string>
 namespace Maneru
 {
@@ -15,6 +15,8 @@ public:
 
 ControllerInterface* OpenController(int index);
 
-std::vector<std::string> GetControllerList();
+typedef std::map<std::string, int> ControllerList;
+
+ControllerList GetControllerList();
 
 }
