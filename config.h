@@ -102,12 +102,12 @@ inline bool ParseValue(const std::string& str, unsigned int& value)
 template <>
 inline bool ParseValue(const std::string& str, bool& value)
 {
-	if (str == "true")
+	if (str == "yes")
 	{
 		value = true;
 		return true;
 	}
-	if (str == "false")
+	if (str == "no")
 	{
 		value = false;
 		return true;

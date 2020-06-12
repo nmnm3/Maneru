@@ -69,6 +69,7 @@ DWORD WINAPI GameLoop(PVOID)
 	int garbageMax = 10;
 	float holeRepeat = 0.5f;
 	bool exactCCMove = true;
+	bool holdLock = true;
 
 	gameConfig->GetValue("next", next);
 	gameConfig->GetValue("delay_at_beginning", delay);
@@ -76,6 +77,7 @@ DWORD WINAPI GameLoop(PVOID)
 	gameConfig->GetValue("garbage_max", garbageMax);
 	gameConfig->GetValue("hole_repeat", holeRepeat);
 	gameConfig->GetValue("exact_cc_move", exactCCMove);
+	gameConfig->GetValue("hold_lock", holdLock);
 
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
@@ -105,7 +107,10 @@ DWORD WINAPI GameLoop(PVOID)
 	CCMove ccm;
 
 	engine->StartDraw();
-	engine->DrawScreen(game);
+	engine->DrawBoard(game);
+	engine->DrawCurrentPiece(game.GetCurrentPiece());
+	engine->DrawNextPreview(game);
+	engine->DrawHold(PieceNone, false);
 	engine->FinishDraw();
 	Sleep(delay);
 
@@ -191,6 +196,7 @@ DWORD WINAPI GameLoop(PVOID)
 
 	actions["hold"] = [&]() {
 		if (exactCCMove && holdPressed == ccm.hold) return;
+		if (holdLock && holdPressed) return;
 		game.HoldCurrentPiece();
 		holdPressed = !holdPressed;
 	};
@@ -228,11 +234,12 @@ DWORD WINAPI GameLoop(PVOID)
 	}
 
 	game.SpawnCurrentPiece();
-	WCHAR statNodes[0x20];
-	WCHAR statDepth[0x10];
-	WCHAR statRank[0x10];
-	WCHAR garbage[0x10];
-	LPCWSTR stats[] = { statNodes, statDepth, statRank, garbage };
+	WCHAR strNodes[0x20];
+	WCHAR strDepth[0x20];
+	WCHAR strGarbage[0x20];
+	WCHAR strMissPrevent[0x20];
+	WCHAR strHoldLock[0x20];
+	LPCWSTR stats[] = { strNodes, strDepth, strGarbage, strMissPrevent, strHoldLock };
 	while (running)
 	{
 		QueryPerformanceCounter(&now);
@@ -240,12 +247,18 @@ DWORD WINAPI GameLoop(PVOID)
 		float alpha = (sin(diff / hintFlashCycle * (2 * M_PI)) + 1) / 2;
 		alpha = alpha * (1 - hintMinOpacity) + hintMinOpacity;
 		engine->StartDraw();
-		engine->DrawScreen(game);
-		if (holdPressed != ccm.hold)
-		{
-			engine->DrawHoldHint(alpha);
-		}
+		engine->DrawBoard(game);
+		engine->DrawCurrentPiece(game.GetCurrentPiece());
+		engine->DrawNextPreview(game);
+		if (holdLock)
+			engine->DrawHold(game.GetHoldPiece(), holdPressed);
+		else
+			engine->DrawHold(game.GetHoldPiece(), false);
 
+		if (holdPressed != ccm.hold)
+			engine->DrawHoldHint(alpha);
+
+		// Lock for plans. Don't draw if CC is updating the plans.
 		{
 			std::unique_lock<std::mutex> l(nextLock);
 			CCPlanPlacement* p = plan.plans;
@@ -259,10 +272,11 @@ DWORD WINAPI GameLoop(PVOID)
 			}
 		}
 
-		wsprintf(statNodes, L"nodes: %d", ccm.nodes);
-		wsprintf(statDepth, L"depth: %d", ccm.depth);
-		wsprintf(statRank, L"rank: %d", ccm.original_rank);
-		wsprintf(garbage, L"garbage: %d", incomingGarbage);
+		wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
+		wsprintf(strDepth, L"深さ: %d", ccm.depth);
+		wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
+		wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
+		wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
 		engine->DrawStats(stats, ARRAYSIZE(stats));
 
 		engine->FinishDraw();

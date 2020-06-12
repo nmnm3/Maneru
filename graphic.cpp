@@ -14,7 +14,7 @@ using D2D1::ColorF;
 const int MINO_SIZE_BASE = 20;
 const int BOARD_LEFT_BASE = 150;
 const int TEXT_LINE_SIZE_BASE = 50;
-const int TEXT_FONT_SIZE_BASE = 20;
+const int TEXT_FONT_SIZE_BASE = 18;
 
 POINT PieceRect[7][4] =
 {
@@ -67,6 +67,7 @@ public:
 	virtual void StartDraw()
 	{
 		renderTarget->BeginDraw();
+		renderTarget->Clear(ColorF(ColorF::White));
 	}
 
 	virtual void FinishDraw()
@@ -140,7 +141,7 @@ public:
 		}
 	}
 
-	virtual void DrawPieceView(MinoType piece, int x, int y)
+	virtual void DrawPieceView(MinoType piece, MinoType color, int x, int y)
 	{
 		D2D1_RECT_F rect;
 
@@ -171,26 +172,35 @@ public:
 				r.top = y + p.y * MINO_SIZE;
 				r.right = r.left + MINO_SIZE;
 				r.bottom = r.top + MINO_SIZE;
-				renderTarget->FillRectangle(r, minoBrush[piece]);
+				renderTarget->FillRectangle(r, minoBrush[color]);
 			}
 		}
 	}
-	virtual void DrawScreen(const TetrisGame& game)
+
+	virtual void DrawHold(MinoType hold, bool disabled)
 	{
-		renderTarget->Clear(ColorF(ColorF::White));
-		DrawBoard(game);
-		DrawPieceView(game.GetHoldPiece(), 0, 0);
+		MinoType color = disabled ? PieceGarbage : hold;
+		DrawPieceView(hold, color, 0, 0);
+	}
+	virtual void DrawNextPreview(const TetrisGame& game)
+	{
 		int r = game.RemainingNext();
 		int pieceLeft1 = BOARD_LEFT + MINO_SIZE * 12;
 		int pieceLeft2 = pieceLeft1 + MINO_SIZE * 5;
 		for (int i = 0; i < 4; i++)
 		{
 			if (i < r)
-				DrawPieceView(game.GetNextPiece(i), pieceLeft1, i * MINO_SIZE * 5);
+			{
+				MinoType t = game.GetNextPiece(i);
+				DrawPieceView(t, t, pieceLeft1, i * MINO_SIZE * 5);
+			}
 			if (i + 4 < r)
-				DrawPieceView(game.GetNextPiece(i+4), pieceLeft2, i * MINO_SIZE * 5);
+			{
+				MinoType t = game.GetNextPiece(i + 4);
+				DrawPieceView(t, t, pieceLeft2, i * MINO_SIZE * 5);
+			}
+				
 		}
-		DrawCurrentPiece(game.GetCurrentPiece());
 	}
 	virtual void DrawHoldHint(float alpha)
 	{
