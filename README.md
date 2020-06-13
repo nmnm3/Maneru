@@ -35,7 +35,7 @@ game.delay_at_beginning 開始画面の待機時間
 game.garbage_min 受ける最小火力
 game.garbage_max 受ける最大火力
 game.hole_repeat 穴ばら率、0=完全穴ばら、1.0=完全直列
-game.exact_cc_move CCの動き縛り。true=CCの読みと違ったら操作は無効化される、false=縛りなし
+game.exact_cc_move CCの動き縛り。yes=CCの読みと違ったら操作は無効化される、no=縛りなし
 game.hold_lock ホールドしたばかりのミノはすぐにホールドで出すことができない
 ```
 グラフィック
