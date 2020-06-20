@@ -26,16 +26,6 @@ ConfigNode *graphicConfig;
 HANDLE hThread;
 bool running = true;
 TetrisGame game;
-MinoType bag[7] =
-{
-	PieceI,
-	PieceT,
-	PieceO,
-	PieceS,
-	PieceZ,
-	PieceL,
-	PieceJ,
-};
 
 void Fatal(LPCWSTR message)
 {
@@ -64,6 +54,73 @@ bool LineCleared(const CCPlanPlacement& plan)
 {
 	return plan.cleared_lines[0] != -1;
 }
+
+struct BitFieldBag
+{
+	BitFieldBag(int b = 0) : bits(b) {}
+	bool Add(MinoType t)
+	{
+		int p = (int)t;
+		int mask = 1 << p;
+		if (bits & mask)
+			return false;
+		bits |= mask;
+		return true;
+	}
+	bool Remove(MinoType t)
+	{
+		int p = (int)t;
+		int mask = 1 << p;
+		if ((bits & mask) == 0)
+			return false;
+		bits ^= mask;
+		return true;
+	}
+	BitFieldBag& operator+=(const BitFieldBag& other)
+	{
+		bits |= other.bits;
+		return *this;
+	}
+	int bits;
+};
+
+struct NextGenerator7Bag
+{
+	NextGenerator7Bag() : current(7), bag()
+	{
+		Reset();
+	}
+	MinoType Next()
+	{
+		if (current == 7)
+		{
+			std::random_shuffle(bag, bag + 7);
+			current = 0;
+		}
+		return bag[current++];
+	}
+	BitFieldBag Remain() const
+	{
+		BitFieldBag b;
+		for (int i = current; i < 7; i++)
+		{
+			b.Add(bag[i]);
+		}
+		return b;
+	}
+	void Reset()
+	{
+		current = 7;
+		for (int i = 0; i < 7; i++)
+		{
+			bag[i] = (MinoType)i;
+		}
+	}
+
+	int current;
+	MinoType bag[7];
+};
+
 
 DWORD WINAPI GameLoop(PVOID)
 {
@@ -95,17 +152,13 @@ DWORD WINAPI GameLoop(PVOID)
 	QueryPerformanceFrequency(&freq);
 	srand(GetTickCount());
 	CCBot cc;
+	NextGenerator7Bag gen;
 
-	int currentBagPiece = 7;
 	auto pickNext = [&]() {
-		if (currentBagPiece == 7)
-		{
-			std::random_shuffle(std::begin(bag), std::end(bag));
-			currentBagPiece = 0;
-		}
-		game.PushNextPiece(bag[currentBagPiece]);
-		cc.AddPiece(bag[currentBagPiece]);
-		currentBagPiece++;
+		MinoType n = gen.Next();
+
+		game.PushNextPiece(n);
+		cc.AddPiece((int)n);
 	};
 	for (int i = 0; i < next; i++)
 		pickNext();
@@ -125,6 +178,7 @@ DWORD WINAPI GameLoop(PVOID)
 	QueryPerformanceCounter(&last);
 	bool holdPressed = false;
 	int incomingGarbage = 0;
+	int combo = 0;
 	map<string, function<void(void)>> actions;
 
 	actions["left"] = []() {game.MoveLeft(); };
@@ -144,34 +198,40 @@ DWORD WINAPI GameLoop(PVOID)
 			if (ccm.hold != holdPressed || !match) return;
 		}
 		game.LockCurrentPiece();
-		game.ClearLines();
+		if (game.ClearLines()) combo++;
+		else combo = 0;
 
 		if (incomingGarbage > 0 || !match)
 		{
 			game.AddGarbage(incomingGarbage, holeRepeat);
 			incomingGarbage = 0;
-			GameBoard gb = game.GetBoard();
+			GameBoard gb;
+			game.GetBoard(gb);
 			MinoType mt = game.GetHoldPiece();
 			if (!match)
 			{
 				// Need to do a hard reset. Destroy current CC handle,
 				// restart from board, bag, hold piece.
 				int bagPieceRemain = 7 - game.GetPieceIndex() % 7;
-				int bagMask = 0;
-				if (bagPieceRemain > game.RemainingNext())
-					bagPieceRemain = game.RemainingNext();
-				for (int i = 0; i < bagPieceRemain; i++)
+
+				BitFieldBag bag;
+				for (int i = 0; i < game.RemainingNext(); i++)
 				{
-					bagMask |= (1 << game.GetNextPiece(i));
+					bag.Add(game.GetNextPiece(i));
 				}
+				if (bagPieceRemain > game.RemainingNext())
+				{
+					bag += gen.Remain();
+				}
+
 				if (mt == PieceNone)
 				{
-					cc.HardReset(nullptr, gb.field, bagMask);
+					cc.HardReset(nullptr, gb.field, bag.bits, combo);
 				}
 				else
 				{
 					CCPiece p = (CCPiece)mt;
-					cc.HardReset(&p, gb.field, bagMask);
+					cc.HardReset(&p, gb.field, bag.bits, combo);
 				}
 
 				for (int i = 0; i < game.RemainingNext(); i++)
@@ -180,7 +240,7 @@ DWORD WINAPI GameLoop(PVOID)
 				}
 			}
 			else
-				cc.SoftReset(gb.field);
+				cc.SoftReset(gb.field, combo);
 		}
 		running = game.SpawnCurrentPiece();
 		if (!running)
@@ -242,10 +302,12 @@ DWORD WINAPI GameLoop(PVOID)
 	game.SpawnCurrentPiece();
 	WCHAR strNodes[0x20];
 	WCHAR strDepth[0x20];
+	WCHAR strPieceIndex[0x20];
+	WCHAR strCombo[0x20];
 	WCHAR strGarbage[0x20];
 	WCHAR strMissPrevent[0x20];
 	WCHAR strHoldLock[0x20];
-	LPCWSTR stats[] = { strNodes, strDepth, strGarbage, strMissPrevent, strHoldLock };
+	LPCWSTR stats[] = { strNodes, strDepth, strPieceIndex, strCombo, strGarbage, strMissPrevent, strHoldLock };
 	while (running)
 	{
 		QueryPerformanceCounter(&now);
@@ -280,6 +342,13 @@ DWORD WINAPI GameLoop(PVOID)
 
 		wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
 		wsprintf(strDepth, L"深さ: %d", ccm.depth);
+		wsprintf(strPieceIndex, L"7種残り: %d", 7 - game.GetPieceIndex() % 7);
+
+		if (combo > 1)
+			wsprintf(strCombo, L"REN: %d", combo - 1);
+		else
+			strCombo[0] = '\0';
+
 		wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
 		wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
 		wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");

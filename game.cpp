@@ -11,29 +11,17 @@ const BlockPosition masks[7][4] = {
 		{0, 0xF, 0, 0},
 		{2, 2, 2, 2},
 	},
-	{ //T
-		{0, 7, 2, 0},
-		{2, 6, 2, 0},
-		{2, 7, 0, 0},
-		{2, 3, 2, 0},
-	},
 	{ //O
 		{0, 6, 6, 0},
 		{0, 6, 6, 0},
 		{0, 6, 6, 0},
 		{0, 6, 6, 0},
 	},
-	{ //S
-		{0, 3, 6, 0},
-		{4, 6, 2, 0},
-		{3, 6, 0, 0},
-		{2, 3, 1, 0},
-	},
-	{ //Z
-		{0, 6, 3, 0},
-		{2, 6, 4, 0},
-		{6, 3, 0, 0},
-		{1, 3, 2, 0},
+	{ //T
+		{0, 7, 2, 0},
+		{2, 6, 2, 0},
+		{2, 7, 0, 0},
+		{2, 3, 2, 0},
 	},
 	{ //L
 		{0, 7, 4, 0},
@@ -47,6 +35,18 @@ const BlockPosition masks[7][4] = {
 		{4, 7, 0, 0},
 		{3, 2, 2, 0},
 	},
+	{ //S
+		{0, 3, 6, 0},
+		{4, 6, 2, 0},
+		{3, 6, 0, 0},
+		{2, 3, 1, 0},
+	},
+	{ //Z
+		{0, 6, 3, 0},
+		{2, 6, 4, 0},
+		{6, 3, 0, 0},
+		{1, 3, 2, 0},
+	}
 };
 
 struct SRSTestPair
@@ -484,9 +484,8 @@ int Maneru::TetrisGame::GetPieceIndex() const
 	return pieceIndex;
 }
 
-GameBoard TetrisGame::GetBoard() const
+void TetrisGame::GetBoard(GameBoard &b) const
 {
-	GameBoard b;
 	for (int y = 0; y < 40; y++)
 	{
 		unsigned int line = board[y];
@@ -495,7 +494,6 @@ GameBoard TetrisGame::GetBoard() const
 			b.field[y * 10 + x] = (line & (1 << x)) > 0;
 		}
 	}
-	return b;
 }
 
 unsigned int BlockPosition::at(int x, int y) const

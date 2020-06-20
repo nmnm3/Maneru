@@ -3,7 +3,7 @@
 using namespace Maneru;
 #pragma comment (lib, "cold_clear.dll.lib")
 
-CCBot::CCBot()
+CCBot::CCBot() : plans()
 {
 	ConfigNode n = GetGlobalConfig()->GetNode("cc");
 
@@ -71,7 +71,11 @@ CCPlan CCBot::Next(CCMove & m)
 		{
 			int c = p.cleared_lines[j];
 			if (c == -1) continue;
-			if (c < 0 || c > 40) __debugbreak();
+			if (c < 0 || c > 40)
+			{
+				return CCPlan{ nullptr, 0 };
+			}
+
 			for (int k = c; k < 39; k++)
 			{
 				ymap[k] = ymap[k + 1];
@@ -82,13 +86,13 @@ CCPlan CCBot::Next(CCMove & m)
 	return CCPlan{ plans, size };
 }
 
-void CCBot::HardReset(CCPiece * hold, bool* board, int remainBagMask)
+void CCBot::HardReset(CCPiece * hold, bool* board, int remainBagMask, int combo)
 {
 	cc_destroy_async(bot);
-	bot = cc_launch_with_board_async(&options, &weights, board, remainBagMask, hold, false, 0);
+	bot = cc_launch_with_board_async(&options, &weights, board, remainBagMask, hold, false, combo);
 }
 
-void Maneru::CCBot::SoftReset(bool * board)
+void Maneru::CCBot::SoftReset(bool * board, int combo)
 {
-	cc_reset_async(bot, board, 0, 0);
+	cc_reset_async(bot, board, false, combo);
 }

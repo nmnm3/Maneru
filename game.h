@@ -7,12 +7,12 @@ namespace Maneru
 enum MinoType
 {
 	PieceI,
-	PieceT,
 	PieceO,
-	PieceS,
-	PieceZ,
+	PieceT,
 	PieceL,
 	PieceJ,
+	PieceS,
+	PieceZ,
 	PieceGarbage,
 	PieceNone,
 	PieceHint,
@@ -76,7 +76,7 @@ public:
 	int RemainingNext() const;
 	int GetPieceIndex() const;
 
-	GameBoard GetBoard() const;
+	void GetBoard(GameBoard& b) const;
 private:
 	unsigned int board[VISIBLE_LINES * 2]; // One uint per line, one bit per cell. Bottom up.
 	MinoType boardColor[VISIBLE_LINES * 2][BOARD_WIDTH]; // Color of each cell
