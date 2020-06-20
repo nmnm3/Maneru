@@ -1,3 +1,5 @@
+# [English](README.en.md)
+
 # まねるちゃん
 
 最強AIである[ColdClear](https://github.com/MinusKelvin/cold-clear)のプレイをまねて火力と掘りの練習する。CCの積み方は精密な計算の上に成り立っているーー十万、百万手先読みして最善を取る。人間では同じ計算は出来ないが、AIの最善パターンから学べるものは多いはず。
