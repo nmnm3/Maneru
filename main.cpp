@@ -449,6 +449,10 @@ float GetResolutionMagnifyFactor()
 {
 	string resolution = "600x400";
 	graphicConfig->GetValue("resolution", resolution);
+	if (resolution == "1800x1200")
+	{
+		return 3.0f;
+	}
 	if (resolution == "1200x800")
 	{
 		return 2.0f;
