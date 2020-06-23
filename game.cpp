@@ -422,6 +422,13 @@ bool TetrisGame::ClearLines()
 	return cleared;
 }
 
+int Maneru::TetrisGame::GetHighestLine() const
+{
+	int l = 0;
+	while (this->board[l] != 0) l++;
+	return l - 1;
+}
+
 void TetrisGame::AddGarbage(int lines, float holeRepeat)
 {
 	if (lines == 0) return;

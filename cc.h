@@ -21,7 +21,7 @@ public:
 	CCBot();
 	~CCBot();
 	void AddPiece(int p);
-	CCPlan Next(CCMove& m);
+	CCPlan Next(CCMove& m, int incoming);
 	void HardReset(CCPiece* hold, bool* board, int remainBagMask, int combo);
 	void SoftReset(bool* board, int combo);
 private:

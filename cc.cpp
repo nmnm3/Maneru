@@ -44,9 +44,9 @@ void CCBot::AddPiece(int p)
 	cc_add_next_piece_async(bot, (CCPiece)p);
 }
 
-CCPlan CCBot::Next(CCMove & m)
+CCPlan CCBot::Next(CCMove & m, int incoming)
 {
-	cc_request_next_move(bot, 0);
+	cc_request_next_move(bot, incoming);
 	uint32_t size = MAX_NEXT_MOVE;
 	CCBotPollStatus status = cc_block_next_move(bot, &m, plans, &size);
 	if (status != CC_MOVE_PROVIDED)

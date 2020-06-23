@@ -69,6 +69,7 @@ public:
 	bool SpawnCurrentPiece();
 
 	bool ClearLines();
+	int GetHighestLine() const;
 	void AddGarbage(int lines, float holeRepeat);
 
 	void SetColor(int x, int y, MinoType color);

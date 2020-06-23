@@ -121,7 +121,6 @@ struct NextGenerator7Bag
 	MinoType bag[7];
 };
 
-
 DWORD WINAPI GameLoop(PVOID)
 {
 	LARGE_INTEGER freq, last, now;
@@ -130,6 +129,7 @@ DWORD WINAPI GameLoop(PVOID)
 	int delay = 1000;
 	int garbageMin = 5;
 	int garbageMax = 10;
+	int garbageAutoLevel = 0;
 	float holeRepeat = 0.5f;
 	bool exactCCMove = true;
 	bool holdLock = true;
@@ -138,16 +138,20 @@ DWORD WINAPI GameLoop(PVOID)
 	gameConfig->GetValue("delay_at_beginning", delay);
 	gameConfig->GetValue("garbage_min", garbageMin);
 	gameConfig->GetValue("garbage_max", garbageMax);
+	gameConfig->GetValue("garbage_autolevel", garbageAutoLevel);
 	gameConfig->GetValue("hole_repeat", holeRepeat);
 	gameConfig->GetValue("exact_cc_move", exactCCMove);
 	gameConfig->GetValue("hold_lock", holdLock);
+	
 
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
 	float planOpacity = 0.2f;
+	int maxPlan = 0;
 	graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
 	graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
 	graphicConfig->GetValue("plan_opacity", planOpacity);
+	graphicConfig->GetValue("max_plan", maxPlan);
 
 	QueryPerformanceFrequency(&freq);
 	srand(GetTickCount());
@@ -173,7 +177,7 @@ DWORD WINAPI GameLoop(PVOID)
 	engine->FinishDraw();
 	Sleep(delay);
 
-	CCPlan plan = cc.Next(ccm);
+	CCPlan plan = cc.Next(ccm, 0);
 	std::mutex nextLock;
 	QueryPerformanceCounter(&last);
 	bool holdPressed = false;
@@ -198,7 +202,8 @@ DWORD WINAPI GameLoop(PVOID)
 			if (ccm.hold != holdPressed || !match) return;
 		}
 		game.LockCurrentPiece();
-		if (game.ClearLines()) combo++;
+		bool cleared = game.ClearLines();
+		if (cleared) combo++;
 		else combo = 0;
 
 		if (incomingGarbage > 0 || !match)
@@ -242,6 +247,11 @@ DWORD WINAPI GameLoop(PVOID)
 			else
 				cc.SoftReset(gb.field, combo);
 		}
+		if (!cleared && game.GetHighestLine() < garbageAutoLevel)
+		{
+			incomingGarbage = garbageMin;
+		}
+
 		running = game.SpawnCurrentPiece();
 		if (!running)
 		{
@@ -251,7 +261,7 @@ DWORD WINAPI GameLoop(PVOID)
 		}
 		pickNext();
 		std::unique_lock<std::mutex> l(nextLock);
-		plan = cc.Next(ccm);
+		plan = cc.Next(ccm, incomingGarbage);
 		if (plan.n == 0)
 		{
 			Fatal(L"CCがパニックに陥た");
@@ -331,8 +341,12 @@ DWORD WINAPI GameLoop(PVOID)
 			std::unique_lock<std::mutex> l(nextLock);
 			CCPlanPlacement* p = plan.plans;
 			engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
-
-			for (int i = 1; i < plan.n; i++)
+			int n = plan.n;
+			if (maxPlan > 0 && n > maxPlan)
+			{
+				n = maxPlan;
+			}
+			for (int i = 1; i < n; i++)
 			{
 				alpha = (1 - planOpacity) / i + planOpacity;
 				p = plan.plans + i;
