@@ -224,6 +224,13 @@ bool TetrisGame::SpawnCurrentPiece()
 	return current.Test(rect);
 }
 
+void Maneru::TetrisGame::ResetCurrentPiece()
+{
+	current.px = 3;
+	current.py = VISIBLE_LINES - 3;
+	current.state = 0;
+}
+
 MinoType TetrisGame::HoldCurrentPiece()
 {
 	current.px = 3;

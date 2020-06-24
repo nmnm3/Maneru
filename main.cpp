@@ -142,7 +142,6 @@ DWORD WINAPI GameLoop(PVOID)
 	gameConfig->GetValue("hole_repeat", holeRepeat);
 	gameConfig->GetValue("exact_cc_move", exactCCMove);
 	gameConfig->GetValue("hold_lock", holdLock);
-	
 
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
@@ -195,6 +194,7 @@ DWORD WINAPI GameLoop(PVOID)
 		else if (incomingGarbage >= garbageMax) incomingGarbage = garbageMax;
 		else incomingGarbage++;
 	};
+	actions["reset_piece"] = []() { game.ResetCurrentPiece(); };
 	actions["hard_drop"] = [&]() {
 		bool match = TestGhost(game.GetGhost(), ccm);
 		if (exactCCMove)
@@ -290,6 +290,7 @@ DWORD WINAPI GameLoop(PVOID)
 		{"start", "garbage"},
 		{"lb", "hold"},
 		{"rb", "hold"},
+		{"ls", "reset_piece"},
 	};
 
 	for (const auto& m : mapping)

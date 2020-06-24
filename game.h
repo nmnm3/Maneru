@@ -67,6 +67,7 @@ public:
 	void LockCurrentPiece();
 	Tetrimino GetGhost() const;
 	bool SpawnCurrentPiece();
+	void ResetCurrentPiece();
 
 	bool ClearLines();
 	int GetHighestLine() const;

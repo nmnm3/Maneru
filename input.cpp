@@ -92,7 +92,7 @@ struct SDLButtonBinding
 	AutoButton btn;
 };
 
-const int NUM_BUTTONS = 13;
+const int NUM_BUTTONS = 15;
 
 class Controller : public ControllerInterface
 {
@@ -109,6 +109,8 @@ public:
 		{"y", SDL_CONTROLLER_BUTTON_Y},
 		{"lb", SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
 		{"rb", SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
+		{"ls", SDL_CONTROLLER_BUTTON_LEFTSTICK},
+		{"rs", SDL_CONTROLLER_BUTTON_RIGHTSTICK},
 		{"start", SDL_CONTROLLER_BUTTON_START},
 		{"back", SDL_CONTROLLER_BUTTON_BACK},
 		{"guide", SDL_CONTROLLER_BUTTON_GUIDE},
