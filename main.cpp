@@ -183,12 +183,28 @@ DWORD WINAPI GameLoop(PVOID)
 	int incomingGarbage = 0;
 	int combo = 0;
 	map<string, function<void(void)>> actions;
+	ControllerHint ctrlHint;
+	ctrlHint.cost = 0;
+	LARGE_INTEGER lastButtonPress;
+	std::function<void(void)> updateControlHint = [&]() {
+		const CCPlanPlacement& firstPlan = plan.plans[0];
+		if (firstPlan.piece == game.GetCurrentPiece().type)
+		{
+			ctrlHint = game.FindPath(firstPlan.expected_x, firstPlan.expected_y);
+		}
+		else
+		{
+			ctrlHint.actions.clear();
+			ctrlHint.cost = 0;
+		}
+	};
 
-	actions["left"] = []() {game.MoveLeft(); };
-	actions["right"] = []() {game.MoveRight(); };
-	actions["soft_drop"] = []() {game.MoveDown(); };
-	actions["rotate_counter_clockwise"] = []() {game.RotateCounterClockwise(); };
-	actions["rotate_clockwise"] = []() {game.RotateClockwise(); };
+
+	actions["left"] = [&]() {game.MoveLeft(); QueryPerformanceCounter(&lastButtonPress); };
+	actions["right"] = [&]() {game.MoveRight(); QueryPerformanceCounter(&lastButtonPress); };
+	actions["soft_drop"] = [&]() {game.MoveDown(); QueryPerformanceCounter(&lastButtonPress); };
+	actions["rotate_counter_clockwise"] = [&]() {game.RotateCounterClockwise(); QueryPerformanceCounter(&lastButtonPress); };
+	actions["rotate_clockwise"] = [&]() {game.RotateClockwise(); QueryPerformanceCounter(&lastButtonPress); };
 	actions["garbage"] = [&]() {
 		if (incomingGarbage < garbageMin) incomingGarbage = garbageMin;
 		else if (incomingGarbage >= garbageMax) incomingGarbage = garbageMax;
@@ -266,6 +282,8 @@ DWORD WINAPI GameLoop(PVOID)
 		{
 			Fatal(L"CCがパニックに陥た");
 		}
+		updateControlHint();
+
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
 	};
@@ -275,6 +293,7 @@ DWORD WINAPI GameLoop(PVOID)
 		if (holdLock && holdPressed) return;
 		game.HoldCurrentPiece();
 		holdPressed = !holdPressed;
+		updateControlHint();
 	};
 
 	map<string, string> mapping =
@@ -318,7 +337,19 @@ DWORD WINAPI GameLoop(PVOID)
 	WCHAR strGarbage[0x20];
 	WCHAR strMissPrevent[0x20];
 	WCHAR strHoldLock[0x20];
-	LPCWSTR stats[] = { strNodes, strDepth, strPieceIndex, strCombo, strGarbage, strMissPrevent, strHoldLock };
+	WCHAR strMoveCost[0x20];
+	LPCWSTR stats[32] = 
+	{
+		strNodes,
+		strDepth,
+		strPieceIndex,
+		strCombo,
+		strGarbage,
+		strMissPrevent,
+		strHoldLock,
+		strMoveCost,
+	};
+	const int fixedStats = 8;
 	while (running)
 	{
 		QueryPerformanceCounter(&now);
@@ -353,6 +384,13 @@ DWORD WINAPI GameLoop(PVOID)
 				p = plan.plans + i;
 				engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
 			}
+
+			float sinceButtonPress = (now.QuadPart - lastButtonPress.QuadPart) / float(freq.QuadPart);
+			if (sinceButtonPress > 1.5)
+			{
+				updateControlHint();
+				lastButtonPress.QuadPart = now.QuadPart;
+			}
 		}
 
 		wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
@@ -367,7 +405,16 @@ DWORD WINAPI GameLoop(PVOID)
 		wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
 		wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
 		wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
-		engine->DrawStats(stats, ARRAYSIZE(stats));
+		wsprintf(strMoveCost, L"Cost: %d", ctrlHint.cost);
+		int statIndex = fixedStats;
+
+		for (auto it = ctrlHint.actions.rbegin(); it != ctrlHint.actions.rend(); it++)
+		{
+			stats[statIndex] = GetControllerActionDescription(*it);
+			statIndex++;
+		}
+
+		engine->DrawStats(stats, statIndex);
 
 		engine->FinishDraw();
 		ctrl->Refresh();

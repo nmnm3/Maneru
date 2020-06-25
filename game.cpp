@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <random>
 #include "game.h"
 #include "input.h"
@@ -510,6 +510,205 @@ void TetrisGame::GetBoard(GameBoard &b) const
 	}
 }
 
+struct PathNode
+{
+	int cost;
+	ControllerAction action;
+	int from;
+};
+
+constexpr int d1 = BOARD_WIDTH + 2;
+constexpr int d2 = VISIBLE_LINES + 2;
+constexpr int d3 = 4;
+constexpr int totalPositions = d1 * d2 * d3;
+
+struct PathPosition
+{
+	int x, y;
+	int state;
+	PathPosition(const Tetrimino& c)
+	{
+		x = c.px;
+		y = c.py;
+		state = c.state;
+	}
+	void Set(Tetrimino& c) const
+	{
+		c.px = x;
+		c.py = y;
+		c.state = state;
+	}
+	bool Match(const unsigned char expectedX[4], const unsigned char expectedY[4], MinoType t) const
+	{
+		const unsigned char* m = masks[t][state].mask;
+		for (int i = 0; i < 4; i++)
+		{
+			int xx = expectedX[i] - x;
+			int yy = expectedY[i] - y;
+			if (xx < 0 || xx >= 4) return false;
+			if (yy < 0 || yy >= 4) return false;
+			if ((m[yy] & (1 << xx)) == 0) return false;
+		}
+		return true;
+	}
+	int PathIndex() const
+	{
+		int index = x + 2;
+		index *= d2;
+		index += y + 2;
+		index *= d3;
+		index += state;
+		return index;
+	}
+};
+
+typedef bool(TetrisGame::* SimpleActionFunction)();
+struct ActionTableEntry
+{
+	ControllerAction action;
+	SimpleActionFunction fn;
+	int cost;
+	int distanceMultiplier;
+};
+
+ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], const unsigned char expectedY[4])
+{
+	const static ActionTableEntry table[] =
+	{
+		{ControllerAction::Left, &TetrisGame::MoveLeft, 20, 0},
+		{ControllerAction::Right, &TetrisGame::MoveRight, 20, 0},
+		{ControllerAction::Down, &TetrisGame::MoveDown, 20, 0},
+		{ControllerAction::RotateClockwise, &TetrisGame::RotateClockwise, 20, 0},
+		{ControllerAction::RotateCounterClockwise, &TetrisGame::RotateCounterClockwise, 20, 0},
+		{ControllerAction::FastLeft, &TetrisGame::FastLeft, 15, 1},
+		{ControllerAction::FastRight, &TetrisGame::FastRight, 15, 1},
+		{ControllerAction::FastDrop, &TetrisGame::FastDrop, 20, 2},
+	};
+
+	Tetrimino back = current;
+	static PathNode positions[totalPositions];
+	memset(positions, 0, sizeof(positions));
+
+	std::queue<PathPosition> q;
+	q.push(current);
+	{
+		PathNode& node = positions[q.front().PathIndex()];
+		node.from = -1;
+		node.cost = 10;
+		node.action = ControllerAction::None;
+	}
+
+	int bestIndex = -1;
+	while (!q.empty())
+	{
+		const PathPosition& start = q.front();
+		start.Set(current);
+		FastDrop();
+		PathPosition afterHardDrop(current);
+		if (afterHardDrop.Match(expectedX, expectedY, current.type))
+		{
+			int index = start.PathIndex();
+			if (bestIndex == -1 || positions[index].cost < positions[bestIndex].cost)
+			{
+				bestIndex = index;
+			}
+		}
+		int startIndex = start.PathIndex();
+		for (auto& entry : table)
+		{
+			start.Set(current);
+			int startx = current.px;
+			int starty = current.py;
+			if ((this->*entry.fn)())
+			{
+				PathPosition end(current);
+				int cost = positions[startIndex].cost + entry.cost;
+				if (entry.distanceMultiplier != 0)
+				{
+					int diff = startx - current.px;
+					if (diff < 0) diff = -diff;
+					cost += diff * entry.distanceMultiplier;
+					diff = starty - current.py;
+					if (diff < 0) diff = -diff;
+					cost += diff * entry.distanceMultiplier;
+				}
+
+				int endIndex = end.PathIndex();
+				PathNode& node = positions[endIndex];
+				if (node.cost == 0 || node.cost > cost)
+				{
+					node.cost = cost;
+					node.action = entry.action;
+					node.from = startIndex;
+					q.push(end);
+				}
+			}
+		}
+		q.pop();
+	}
+
+	current = back;
+	ControllerHint hint;
+	if (bestIndex != -1)
+	{
+		hint.cost = positions[bestIndex].cost;
+		hint.actions.push_back(ControllerAction::HardDrop);
+		int index = bestIndex;
+		while (positions[index].from != -1)
+		{
+			hint.actions.push_back(positions[index].action);
+			index = positions[index].from;
+		}
+	}
+	else
+	{
+		hint.cost = 0;
+	}
+	return hint;
+}
+
+int Maneru::TetrisGame::FindPathIndex() const
+{
+	int d1 = BOARD_WIDTH + 2;
+	int d2 = VISIBLE_LINES + 4;
+	int d3 = 4;
+	int index = current.px + 2;
+	index *= d1;
+	index += current.py + 3;
+	index *= d2;
+	index += current.state;
+	return index;
+}
+
+bool Maneru::TetrisGame::FastDrop()
+{
+	int lasty = current.py;
+	LineRect rect;
+	rect.lines = board + current.py;
+	while (current.Test(rect))
+	{
+		rect.lines--;
+		current.py--;
+	}
+	current.py++;
+
+	return current.py != lasty;
+}
+
+bool Maneru::TetrisGame::FastLeft()
+{
+	if (!MoveLeft()) return false;
+	while (MoveLeft());
+	return true;
+}
+
+bool Maneru::TetrisGame::FastRight()
+{
+	if (!MoveRight()) return false;
+	while (MoveRight());
+	return true;
+}
+
 unsigned int BlockPosition::at(int x, int y) const
 {
 	if (x >= 0)
@@ -525,4 +724,23 @@ unsigned int BlockPosition::at(int x, int y) const
 unsigned int BlockPosition::operator[](int index) const
 {
 	return mask[index];
+}
+
+static const wchar_t* descrptions[] =
+{
+	L"None",
+	L"←",
+	L"→",
+	L"↓",
+	L"A/Y",
+	L"B/X",
+	L"← ++",
+	L"→ ++",
+	L"↓ ++",
+	L"↑",
+};
+
+const wchar_t* Maneru::GetControllerActionDescription(ControllerAction act)
+{
+	return descrptions[(int)act];
 }

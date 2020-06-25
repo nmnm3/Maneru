@@ -1,6 +1,6 @@
 #pragma once
 #include <mutex>
-#include <deque>
+#include <queue>
 
 namespace Maneru
 {
@@ -48,6 +48,28 @@ struct GameBoard
 	bool field[400];
 };
 
+enum class ControllerAction
+{
+	None,
+	Left,
+	Right,
+	Down,
+	RotateClockwise,
+	RotateCounterClockwise,
+	FastLeft,
+	FastRight,
+	FastDrop,
+	HardDrop,
+};
+
+const wchar_t* GetControllerActionDescription(ControllerAction act);
+
+struct ControllerHint
+{
+	std::vector<ControllerAction> actions;
+	int cost;
+};
+
 class TetrisGame
 {
 public:
@@ -79,7 +101,14 @@ public:
 	int GetPieceIndex() const;
 
 	void GetBoard(GameBoard& b) const;
+
+	ControllerHint FindPath(const unsigned char expectedX[4], const unsigned char expectedY[4]);
 private:
+	int FindPathIndex() const;
+	bool FastDrop();
+	bool FastLeft();
+	bool FastRight();
+
 	unsigned int board[VISIBLE_LINES * 2]; // One uint per line, one bit per cell. Bottom up.
 	MinoType boardColor[VISIBLE_LINES * 2][BOARD_WIDTH]; // Color of each cell
 	Tetrimino current;
