@@ -137,6 +137,12 @@ void TetrisGame::PushNextPiece(MinoType t)
 	next.push_back(t);
 }
 
+void Maneru::TetrisGame::PushBackCurrentPiece()
+{
+	next.push_front(current.type);
+	pieceIndex--;
+}
+
 const Tetrimino & TetrisGame::GetCurrentPiece() const
 {
 	return current;

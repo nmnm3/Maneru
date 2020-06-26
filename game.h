@@ -75,6 +75,7 @@ class TetrisGame
 public:
 	TetrisGame();
 	void PushNextPiece(MinoType t);
+	void PushBackCurrentPiece();
 	const Tetrimino& GetCurrentPiece() const;
 	MinoType GetNextPiece(int index) const;
 	MinoType GetHoldPiece() const;

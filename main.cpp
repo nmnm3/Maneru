@@ -166,7 +166,7 @@ public:
 	int numPlans;
 	std::mutex nextLock;
 
-	bool drawhint = true;
+	bool enableColdClear = true;
 
 	void pickNext()
 	{
@@ -237,10 +237,51 @@ public:
 		game.ResetCurrentPiece();
 	}
 
+	void hardReset()
+	{
+		GameBoard gb;
+		game.GetBoard(gb);
+		MinoType mt = game.GetHoldPiece();
+
+		int bagPieceRemain = 7 - game.GetPieceIndex() % 7;
+
+		BitFieldBag bag;
+		for (int i = 0; i < bagPieceRemain; i++)
+		{
+			bag.Add(game.GetNextPiece(i));
+		}
+		if (bagPieceRemain > game.RemainingNext())
+		{
+			bag += gen.Remain();
+		}
+
+		if (mt == PieceNone)
+		{
+			cc.HardReset(nullptr, gb.field, bag.bits, combo);
+		}
+		else
+		{
+			CCPiece p = (CCPiece)mt;
+			cc.HardReset(&p, gb.field, bag.bits, combo);
+		}
+
+		for (int i = 0; i < game.RemainingNext(); i++)
+		{
+			cc.AddPiece(game.GetNextPiece(i));
+		}
+	}
+
+	void softReset()
+	{
+		GameBoard gb;
+		game.GetBoard(gb);
+		cc.SoftReset(gb.field, combo);
+	}
+
 	void actionHardDrop()
 	{
 		bool match = TestGhost(game.GetGhost(), ccm);
-		if (exactCCMove)
+		if (exactCCMove && enableColdClear)
 		{
 			if (ccm.hold != holdPressed || !match) return;
 		}
@@ -253,42 +294,19 @@ public:
 		{
 			game.AddGarbage(incomingGarbage, holeRepeat);
 			incomingGarbage = 0;
-			GameBoard gb;
-			game.GetBoard(gb);
-			MinoType mt = game.GetHoldPiece();
-			if (!match)
+
+			if (enableColdClear)
 			{
-				// Need to do a hard reset. Destroy current CC handle,
-				// restart from board, bag, hold piece.
-				int bagPieceRemain = 7 - game.GetPieceIndex() % 7;
-
-				BitFieldBag bag;
-				for (int i = 0; i < game.RemainingNext(); i++)
+				if (!match)
 				{
-					bag.Add(game.GetNextPiece(i));
-				}
-				if (bagPieceRemain > game.RemainingNext())
-				{
-					bag += gen.Remain();
-				}
-
-				if (mt == PieceNone)
-				{
-					cc.HardReset(nullptr, gb.field, bag.bits, combo);
+					hardReset();
 				}
 				else
 				{
-					CCPiece p = (CCPiece)mt;
-					cc.HardReset(&p, gb.field, bag.bits, combo);
-				}
-
-				for (int i = 0; i < game.RemainingNext(); i++)
-				{
-					cc.AddPiece(game.GetNextPiece(i));
+					softReset();
 				}
 			}
-			else
-				cc.SoftReset(gb.field, combo);
+
 		}
 		if (!cleared && game.GetHighestLine() < garbageAutoLevel)
 		{
@@ -302,13 +320,16 @@ public:
 			return;
 		}
 		pickNext();
-		std::unique_lock<std::mutex> l(nextLock);
-		numPlans = cc.Next(ccm, incomingGarbage);
-		if (numPlans == 0)
+		if (enableColdClear)
 		{
-			Fatal(L"CCがパニックに陥た");
+			std::unique_lock<std::mutex> l(nextLock);
+			numPlans = cc.Next(ccm, incomingGarbage);
+			if (numPlans == 0)
+			{
+				Fatal(L"CCがパニックに陥た");
+			}
+			updateControlHint();
 		}
-		updateControlHint();
 
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
@@ -316,18 +337,37 @@ public:
 
 	void actionHold()
 	{
-		if (exactCCMove && holdPressed == ccm.hold)
+		if (enableColdClear && exactCCMove && holdPressed == ccm.hold)
 			return;
 		if (holdLock && holdPressed)
 			return;
 		game.HoldCurrentPiece();
 		holdPressed = !holdPressed;
-		updateControlHint();
+		if (enableColdClear)
+			updateControlHint();
 	}
 
-	void actionToggleDrawHint()
+	void actionToggleColdClear()
 	{
-		drawhint = !drawhint;
+		if (enableColdClear)
+		{
+			cc.Stop();
+			enableColdClear = false;
+			numPlans = 0;
+			ccm.depth = 0;
+			ccm.nodes = 0;
+			ctrlHint.cost = 0;
+			ctrlHint.actions.clear();
+		}
+		else
+		{
+			game.PushBackCurrentPiece();
+			hardReset();
+			enableColdClear = true;
+			numPlans = cc.Next(ccm, 0);
+			updateControlHint();
+			game.SpawnCurrentPiece();
+		}
 	}
 
 	void initControl()
@@ -342,7 +382,7 @@ public:
 		actions["reset_piece"] = [this]() { this->actionResetPiece(); };
 		actions["hard_drop"] = [this]() { this->actionHardDrop(); };
 		actions["hold"] = [this]() { this->actionHold(); };
-		actions["toggle_hint"] = [this]() { this->actionToggleDrawHint(); };
+		actions["toggle_cc"] = [this]() { this->actionToggleColdClear(); };
 
 		map<string, string> mapping =
 		{
@@ -358,7 +398,7 @@ public:
 			{"lb", "hold"},
 			{"rb", "hold"},
 			{"ls", "reset_piece"},
-			{"rs", "toggle_hint"},
+			{"rs", "toggle_cc"},
 		};
 
 		for (const auto& m : mapping)
@@ -450,7 +490,7 @@ public:
 			else
 				engine->DrawHold(game.GetHoldPiece(), false);
 
-			if (drawhint)
+			if (enableColdClear)
 			{
 				if (holdPressed != ccm.hold)
 					engine->DrawHoldHint(alpha);
@@ -491,7 +531,7 @@ public:
 				strCombo[0] = '\0';
 
 			wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
-			wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
+			wsprintf(strMissPrevent, L"CC縛り: %s", exactCCMove ? L"ON" : L"OFF");
 			wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
 			wsprintf(strMoveCost, L"Cost: %d", ctrlHint.cost);
 			int statIndex = fixedStats;
