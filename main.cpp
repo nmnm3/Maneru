@@ -121,10 +121,24 @@ struct NextGenerator7Bag
 	MinoType bag[7];
 };
 
-DWORD WINAPI GameLoop(PVOID)
-{
-	LARGE_INTEGER freq, last, now;
 
+class GameLoop
+{
+public:
+	void Start()
+	{
+		running = true;
+		loop = std::thread(&GameLoop::Run, this);
+	}
+	void Stop()
+	{
+		running = false;
+		loop.join();
+	}
+
+	std::thread loop;
+
+	LARGE_INTEGER freq, last, now;
 	int next = 7;
 	int delay = 1000;
 	int garbageMin = 5;
@@ -133,85 +147,98 @@ DWORD WINAPI GameLoop(PVOID)
 	float holeRepeat = 0.5f;
 	bool exactCCMove = true;
 	bool holdLock = true;
-
-	gameConfig->GetValue("next", next);
-	gameConfig->GetValue("delay_at_beginning", delay);
-	gameConfig->GetValue("garbage_min", garbageMin);
-	gameConfig->GetValue("garbage_max", garbageMax);
-	gameConfig->GetValue("garbage_autolevel", garbageAutoLevel);
-	gameConfig->GetValue("hole_repeat", holeRepeat);
-	gameConfig->GetValue("exact_cc_move", exactCCMove);
-	gameConfig->GetValue("hold_lock", holdLock);
-
 	float hintFlashCycle = 1.5f;
 	float hintMinOpacity = 0.5f;
 	float planOpacity = 0.2f;
 	int maxPlan = 0;
-	graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
-	graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
-	graphicConfig->GetValue("plan_opacity", planOpacity);
-	graphicConfig->GetValue("max_plan", maxPlan);
 
-	QueryPerformanceFrequency(&freq);
-	srand(GetTickCount());
 	CCBot cc;
 	NextGenerator7Bag gen;
 
-	auto pickNext = [&]() {
+	ControllerHint ctrlHint;
+
+	bool holdPressed = false;
+	int incomingGarbage = 0;
+	int combo = 0;
+	LARGE_INTEGER lastButtonPress;
+
+	CCMove ccm;
+	int numPlans;
+	std::mutex nextLock;
+
+	bool drawhint = true;
+
+	void pickNext()
+	{
 		MinoType n = gen.Next();
 
 		game.PushNextPiece(n);
 		cc.AddPiece((int)n);
-	};
-	for (int i = 0; i < next; i++)
-		pickNext();
+	}
 
-	CCMove ccm;
-
-	engine->StartDraw();
-	engine->DrawBoard(game);
-	engine->DrawCurrentPiece(game.GetCurrentPiece());
-	engine->DrawNextPreview(game);
-	engine->DrawHold(PieceNone, false);
-	engine->FinishDraw();
-	Sleep(delay);
-
-	CCPlan plan = cc.Next(ccm, 0);
-	std::mutex nextLock;
-	QueryPerformanceCounter(&last);
-	bool holdPressed = false;
-	int incomingGarbage = 0;
-	int combo = 0;
-	map<string, function<void(void)>> actions;
-	ControllerHint ctrlHint;
-	ctrlHint.cost = 0;
-	LARGE_INTEGER lastButtonPress;
-	std::function<void(void)> updateControlHint = [&]() {
-		const CCPlanPlacement& firstPlan = plan.plans[0];
-		if (firstPlan.piece == game.GetCurrentPiece().type)
+	void updateControlHint()
+	{
+		const CCPlanPlacement* firstPlan = cc.GetPlan(0);
+		if (firstPlan == nullptr) return;
+		if (firstPlan->piece == game.GetCurrentPiece().type)
 		{
-			ctrlHint = game.FindPath(firstPlan.expected_x, firstPlan.expected_y);
+			ctrlHint = game.FindPath(firstPlan->expected_x, firstPlan->expected_y);
 		}
 		else
 		{
 			ctrlHint.actions.clear();
 			ctrlHint.cost = 0;
 		}
-	};
+	}
 
+	void actionLeft()
+	{
+		game.MoveLeft(); QueryPerformanceCounter(&lastButtonPress);
+	}
 
-	actions["left"] = [&]() {game.MoveLeft(); QueryPerformanceCounter(&lastButtonPress); };
-	actions["right"] = [&]() {game.MoveRight(); QueryPerformanceCounter(&lastButtonPress); };
-	actions["soft_drop"] = [&]() {game.MoveDown(); QueryPerformanceCounter(&lastButtonPress); };
-	actions["rotate_counter_clockwise"] = [&]() {game.RotateCounterClockwise(); QueryPerformanceCounter(&lastButtonPress); };
-	actions["rotate_clockwise"] = [&]() {game.RotateClockwise(); QueryPerformanceCounter(&lastButtonPress); };
-	actions["garbage"] = [&]() {
-		if (incomingGarbage < garbageMin) incomingGarbage = garbageMin;
-		else if (incomingGarbage >= garbageMax) incomingGarbage = garbageMax;
-		else incomingGarbage++;
-	};
-	actions["reset_piece"] = []() { game.ResetCurrentPiece(); };
-	actions["hard_drop"] = [&]() {
+	void actionRight()
+	{
+		game.MoveRight(); QueryPerformanceCounter(&lastButtonPress);
+	}
+
+	void actionSoftDrop()
+	{
+		game.MoveDown(); QueryPerformanceCounter(&lastButtonPress);
+	}
+
+	void actionRotateCounterClockwise()
+	{
+		game.RotateCounterClockwise(); QueryPerformanceCounter(&lastButtonPress);
+	}
+
+	void actionRotateClockwise()
+	{
+		game.RotateClockwise(); QueryPerformanceCounter(&lastButtonPress);
+	}
+
+	void actionGarbage()
+	{
+		if (incomingGarbage < garbageMin)
+		{
+			incomingGarbage = garbageMin;
+		}
+		else if (incomingGarbage >= garbageMax)
+		{
+			incomingGarbage = garbageMax;
+		}
+		else
+		{
+			incomingGarbage++;
+		}
+	}
+
+	void actionResetPiece()
+	{
+		game.ResetCurrentPiece();
+	}
+
+	void actionHardDrop()
+	{
 		bool match = TestGhost(game.GetGhost(), ccm);
 		if (exactCCMove)
 		{
@@ -276,8 +303,8 @@ DWORD WINAPI GameLoop(PVOID)
 		}
 		pickNext();
 		std::unique_lock<std::mutex> l(nextLock);
-		plan = cc.Next(ccm, incomingGarbage);
-		if (plan.n == 0)
+		numPlans = cc.Next(ccm, incomingGarbage);
+		if (numPlans == 0)
 		{
 			Fatal(L"CCがパニックに陥た");
 		}
@@ -285,162 +312,203 @@ DWORD WINAPI GameLoop(PVOID)
 
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
-	};
+	}
 
-	actions["hold"] = [&]() {
-		if (exactCCMove && holdPressed == ccm.hold) return;
-		if (holdLock && holdPressed) return;
+	void actionHold()
+	{
+		if (exactCCMove && holdPressed == ccm.hold)
+			return;
+		if (holdLock && holdPressed)
+			return;
 		game.HoldCurrentPiece();
 		holdPressed = !holdPressed;
 		updateControlHint();
-	};
+	}
 
-	bool drawhint = true;
-	actions["toggle_hint"] = [&]() {
+	void actionToggleDrawHint()
+	{
 		drawhint = !drawhint;
-	};
+	}
 
-	map<string, string> mapping =
+	void initControl()
 	{
-		{"left", "left"},
-		{"right", "right"},
-		{"up", "hard_drop"},
-		{"down", "soft_drop" },
-		{"a", "rotate_counter_clockwise"},
-		{"x", "rotate_counter_clockwise"},
-		{"b", "rotate_clockwise"},
-		{"y", "rotate_clockwise"},
-		{"start", "garbage"},
-		{"lb", "hold"},
-		{"rb", "hold"},
-		{"ls", "reset_piece"},
-		{"rs", "toggle_hint"},
-	};
+		map<string, function<void(void)>> actions;
+		actions["left"] = [this]() { this->actionLeft(); };
+		actions["right"] = [this]() { this->actionRight(); };
+		actions["soft_drop"] = [this]() { this->actionSoftDrop(); };
+		actions["rotate_counter_clockwise"] = [this]() { this->actionRotateCounterClockwise(); };
+		actions["rotate_clockwise"] = [this]() { this->actionRotateClockwise(); };
+		actions["garbage"] = [this]() { this->actionGarbage(); };
+		actions["reset_piece"] = [this]() { this->actionResetPiece(); };
+		actions["hard_drop"] = [this]() { this->actionHardDrop(); };
+		actions["hold"] = [this]() { this->actionHold(); };
+		actions["toggle_hint"] = [this]() { this->actionToggleDrawHint(); };
 
-	for (const auto& m : mapping)
-	{
-		string action = m.second;
-		if (!controlConfig->GetValue(m.first, action))
-			continue;
-		auto it = actions.find(action);
-		if (it != actions.end())
+		map<string, string> mapping =
 		{
-			ConfigNode ratecfg = controlConfig->GetNode(m.first);
-			float repeatDelay = 0;
-			float repeatRate = 0;
-			ratecfg.GetValue("repeat_delay", repeatDelay);
-			ratecfg.GetValue("repeat_rate", repeatRate);
-			ctrl->SetButtonFunction(m.first.c_str(), it->second, repeatDelay, repeatRate);
+			{"left", "left"},
+			{"right", "right"},
+			{"up", "hard_drop"},
+			{"down", "soft_drop" },
+			{"a", "rotate_counter_clockwise"},
+			{"x", "rotate_counter_clockwise"},
+			{"b", "rotate_clockwise"},
+			{"y", "rotate_clockwise"},
+			{"start", "garbage"},
+			{"lb", "hold"},
+			{"rb", "hold"},
+			{"ls", "reset_piece"},
+			{"rs", "toggle_hint"},
+		};
+
+		for (const auto& m : mapping)
+		{
+			string action = m.second;
+			if (!controlConfig->GetValue(m.first, action))
+				continue;
+			auto it = actions.find(action);
+			if (it != actions.end())
+			{
+				ConfigNode ratecfg = controlConfig->GetNode(m.first);
+				float repeatDelay = 0;
+				float repeatRate = 0;
+				ratecfg.GetValue("repeat_delay", repeatDelay);
+				ratecfg.GetValue("repeat_rate", repeatRate);
+				ctrl->SetButtonFunction(m.first.c_str(), it->second, repeatDelay, repeatRate);
+			}
 		}
 	}
 
-	game.SpawnCurrentPiece();
-	WCHAR strNodes[0x20];
-	WCHAR strDepth[0x20];
-	WCHAR strPieceIndex[0x20];
-	WCHAR strCombo[0x20];
-	WCHAR strGarbage[0x20];
-	WCHAR strMissPrevent[0x20];
-	WCHAR strHoldLock[0x20];
-	WCHAR strMoveCost[0x20];
-	LPCWSTR stats[32] = 
+	void Run()
 	{
-		strNodes,
-		strDepth,
-		strPieceIndex,
-		strCombo,
-		strGarbage,
-		strMissPrevent,
-		strHoldLock,
-		strMoveCost,
-	};
-	const int fixedStats = 8;
-	while (running)
-	{
-		QueryPerformanceCounter(&now);
-		float diff = (now.QuadPart - last.QuadPart) / float(freq.QuadPart);
-		float alpha = (sin(diff / hintFlashCycle * (2 * M_PI)) + 1) / 2;
-		alpha = alpha * (1 - hintMinOpacity) + hintMinOpacity;
+		initControl();
+
+		gameConfig->GetValue("next", next);
+		gameConfig->GetValue("delay_at_beginning", delay);
+		gameConfig->GetValue("garbage_min", garbageMin);
+		gameConfig->GetValue("garbage_max", garbageMax);
+		gameConfig->GetValue("garbage_autolevel", garbageAutoLevel);
+		gameConfig->GetValue("hole_repeat", holeRepeat);
+		gameConfig->GetValue("exact_cc_move", exactCCMove);
+		gameConfig->GetValue("hold_lock", holdLock);
+		graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
+		graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
+		graphicConfig->GetValue("plan_opacity", planOpacity);
+		graphicConfig->GetValue("max_plan", maxPlan);
+		
+		QueryPerformanceFrequency(&freq);
+		srand(GetTickCount());
+
+		for (int i = 0; i < next; i++)
+			pickNext();
+
 		engine->StartDraw();
 		engine->DrawBoard(game);
 		engine->DrawCurrentPiece(game.GetCurrentPiece());
 		engine->DrawNextPreview(game);
-		if (holdLock)
-			engine->DrawHold(game.GetHoldPiece(), holdPressed);
-		else
-			engine->DrawHold(game.GetHoldPiece(), false);
+		engine->DrawHold(PieceNone, false);
+		engine->FinishDraw();
+		Sleep(delay);
 
-		if (drawhint)
+		numPlans = cc.Next(ccm, 0);
+		updateControlHint();
+		QueryPerformanceCounter(&last);
+
+		game.SpawnCurrentPiece();
+		WCHAR strNodes[0x20];
+		WCHAR strDepth[0x20];
+		WCHAR strPieceIndex[0x20];
+		WCHAR strCombo[0x20];
+		WCHAR strGarbage[0x20];
+		WCHAR strMissPrevent[0x20];
+		WCHAR strHoldLock[0x20];
+		WCHAR strMoveCost[0x20];
+		LPCWSTR stats[32] =
 		{
-			if (holdPressed != ccm.hold)
-				engine->DrawHoldHint(alpha);
+			strNodes,
+			strDepth,
+			strPieceIndex,
+			strCombo,
+			strGarbage,
+			strMissPrevent,
+			strHoldLock,
+			strMoveCost,
+		};
+		const int fixedStats = 8;
+		while (running)
+		{
+			QueryPerformanceCounter(&now);
+			float diff = (now.QuadPart - last.QuadPart) / float(freq.QuadPart);
+			float alpha = (sin(diff / hintFlashCycle * (2 * M_PI)) + 1) / 2;
+			alpha = alpha * (1 - hintMinOpacity) + hintMinOpacity;
+			engine->StartDraw();
+			engine->DrawBoard(game);
+			engine->DrawCurrentPiece(game.GetCurrentPiece());
+			engine->DrawNextPreview(game);
+			if (holdLock)
+				engine->DrawHold(game.GetHoldPiece(), holdPressed);
+			else
+				engine->DrawHold(game.GetHoldPiece(), false);
 
-			// Lock for plans. Don't draw if CC is updating the plans.
+			if (drawhint)
 			{
-				std::unique_lock<std::mutex> l(nextLock);
-				CCPlanPlacement* p = plan.plans;
-				engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
-				int n = plan.n;
-				if (maxPlan > 0 && n > maxPlan)
-				{
-					n = maxPlan;
-				}
-				for (int i = 1; i < n; i++)
-				{
-					alpha = (1 - planOpacity) / i + planOpacity;
-					p = plan.plans + i;
-					engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
-				}
+				if (holdPressed != ccm.hold)
+					engine->DrawHoldHint(alpha);
 
-				float sinceButtonPress = (now.QuadPart - lastButtonPress.QuadPart) / float(freq.QuadPart);
-				if (sinceButtonPress > 1.5)
+				// Lock for plans. Don't draw if CC is updating the plans.
 				{
-					updateControlHint();
-					lastButtonPress.QuadPart = now.QuadPart;
+					std::unique_lock<std::mutex> l(nextLock);
+					const CCPlanPlacement* p = cc.GetPlan(0);
+					engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
+					int n = numPlans;
+					if (maxPlan > 0 && n > maxPlan)
+					{
+						n = maxPlan;
+					}
+					for (int i = 1; i < n; i++)
+					{
+						alpha = (1 - planOpacity) / i + planOpacity;
+						p = cc.GetPlan(i);
+						engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
+					}
+
+					float sinceButtonPress = (now.QuadPart - lastButtonPress.QuadPart) / float(freq.QuadPart);
+					if (sinceButtonPress > 1.5)
+					{
+						updateControlHint();
+						lastButtonPress.QuadPart = now.QuadPart;
+					}
 				}
 			}
+
+			wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
+			wsprintf(strDepth, L"深さ: %d", ccm.depth);
+			wsprintf(strPieceIndex, L"7種残り: %d", 7 - game.GetPieceIndex() % 7);
+
+			if (combo > 1)
+				wsprintf(strCombo, L"REN: %d", combo - 1);
+			else
+				strCombo[0] = '\0';
+
+			wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
+			wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
+			wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
+			wsprintf(strMoveCost, L"Cost: %d", ctrlHint.cost);
+			int statIndex = fixedStats;
+
+			for (auto it = ctrlHint.actions.rbegin(); it != ctrlHint.actions.rend(); it++)
+			{
+				stats[statIndex] = GetControllerActionDescription(*it);
+				statIndex++;
+			}
+
+			engine->DrawStats(stats, statIndex);
+
+			engine->FinishDraw();
+			ctrl->Refresh();
 		}
-
-		wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
-		wsprintf(strDepth, L"深さ: %d", ccm.depth);
-		wsprintf(strPieceIndex, L"7種残り: %d", 7 - game.GetPieceIndex() % 7);
-
-		if (combo > 1)
-			wsprintf(strCombo, L"REN: %d", combo - 1);
-		else
-			strCombo[0] = '\0';
-
-		wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
-		wsprintf(strMissPrevent, L"ミス防止: %s", exactCCMove ? L"ON" : L"OFF");
-		wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
-		wsprintf(strMoveCost, L"Cost: %d", ctrlHint.cost);
-		int statIndex = fixedStats;
-
-		for (auto it = ctrlHint.actions.rbegin(); it != ctrlHint.actions.rend(); it++)
-		{
-			stats[statIndex] = GetControllerActionDescription(*it);
-			statIndex++;
-		}
-
-		engine->DrawStats(stats, statIndex);
-
-		engine->FinishDraw();
-		ctrl->Refresh();
 	}
-	return 0;
-}
-
-void StartGame()
-{
-	running = true;
-	hThread = CreateThread(0, 0, GameLoop, 0, 0, 0);
-}
-void StopGame()
-{
-	running = false;
-	WaitForSingleObject(hThread, -1);
-	CloseHandle(hThread);
-}
+};
 
 void CenterWindow(HWND h)
 {
@@ -632,7 +700,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		Fatal(L"DirectX初期化が失敗しました");
 	}
 
-	StartGame();
+	GameLoop gl;
+	gl.Start();
 
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -641,7 +710,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		DispatchMessage(&msg);
 	}
 
-	StopGame();
+	gl.Stop();
 	engine->Shutdown();
 
 	ExitProcess(0);

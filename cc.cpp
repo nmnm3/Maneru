@@ -39,19 +39,25 @@ CCBot::~CCBot()
 	cc_destroy_async(bot);
 }
 
-void CCBot::AddPiece(int p)
+void CCBot::Stop()
 {
-	cc_add_next_piece_async(bot, (CCPiece)p);
+	cc_destroy_async(bot);
+	bot = nullptr;
 }
 
-CCPlan CCBot::Next(CCMove & m, int incoming)
+void CCBot::AddPiece(int p)
+{
+	if (bot) cc_add_next_piece_async(bot, (CCPiece)p);
+}
+
+int CCBot::Next(CCMove & m, int incoming)
 {
 	cc_request_next_move(bot, incoming);
 	uint32_t size = MAX_NEXT_MOVE;
 	CCBotPollStatus status = cc_block_next_move(bot, &m, plans, &size);
 	if (status != CC_MOVE_PROVIDED)
 	{
-		return CCPlan{ nullptr, 0 };
+		return 0;
 	}
 
 	int ymap[40];
@@ -73,7 +79,7 @@ CCPlan CCBot::Next(CCMove & m, int incoming)
 			if (c == -1) continue;
 			if (c < 0 || c > 40)
 			{
-				return CCPlan{ nullptr, 0 };
+				return 0;
 			}
 
 			for (int k = c; k < 39; k++)
@@ -82,17 +88,26 @@ CCPlan CCBot::Next(CCMove & m, int incoming)
 			}
 		}
 	}
-
-	return CCPlan{ plans, size };
+	validPlans = size;
+	return size;
 }
 
 void CCBot::HardReset(CCPiece * hold, bool* board, int remainBagMask, int combo)
 {
-	cc_destroy_async(bot);
+	if (bot) cc_destroy_async(bot);
 	bot = cc_launch_with_board_async(&options, &weights, board, remainBagMask, hold, false, combo);
 }
 
-void Maneru::CCBot::SoftReset(bool * board, int combo)
+void CCBot::SoftReset(bool * board, int combo)
 {
-	cc_reset_async(bot, board, false, combo);
+	if (bot) cc_reset_async(bot, board, false, combo);
+}
+
+const CCPlanPlacement* CCBot::GetPlan(int index) const
+{
+	if (index < validPlans)
+	{
+		return plans + index;
+	}
+	return nullptr;
 }
