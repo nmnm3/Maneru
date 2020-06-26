@@ -271,7 +271,6 @@ DWORD WINAPI GameLoop(PVOID)
 		running = game.SpawnCurrentPiece();
 		if (!running)
 		{
-
 			Fatal(L"ゲームオーバー");
 			return;
 		}
@@ -296,6 +295,11 @@ DWORD WINAPI GameLoop(PVOID)
 		updateControlHint();
 	};
 
+	bool drawhint = true;
+	actions["toggle_hint"] = [&]() {
+		drawhint = !drawhint;
+	};
+
 	map<string, string> mapping =
 	{
 		{"left", "left"},
@@ -310,6 +314,7 @@ DWORD WINAPI GameLoop(PVOID)
 		{"lb", "hold"},
 		{"rb", "hold"},
 		{"ls", "reset_piece"},
+		{"rs", "toggle_hint"},
 	};
 
 	for (const auto& m : mapping)
@@ -365,31 +370,34 @@ DWORD WINAPI GameLoop(PVOID)
 		else
 			engine->DrawHold(game.GetHoldPiece(), false);
 
-		if (holdPressed != ccm.hold)
-			engine->DrawHoldHint(alpha);
-
-		// Lock for plans. Don't draw if CC is updating the plans.
+		if (drawhint)
 		{
-			std::unique_lock<std::mutex> l(nextLock);
-			CCPlanPlacement* p = plan.plans;
-			engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
-			int n = plan.n;
-			if (maxPlan > 0 && n > maxPlan)
-			{
-				n = maxPlan;
-			}
-			for (int i = 1; i < n; i++)
-			{
-				alpha = (1 - planOpacity) / i + planOpacity;
-				p = plan.plans + i;
-				engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
-			}
+			if (holdPressed != ccm.hold)
+				engine->DrawHoldHint(alpha);
 
-			float sinceButtonPress = (now.QuadPart - lastButtonPress.QuadPart) / float(freq.QuadPart);
-			if (sinceButtonPress > 1.5)
+			// Lock for plans. Don't draw if CC is updating the plans.
 			{
-				updateControlHint();
-				lastButtonPress.QuadPart = now.QuadPart;
+				std::unique_lock<std::mutex> l(nextLock);
+				CCPlanPlacement* p = plan.plans;
+				engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
+				int n = plan.n;
+				if (maxPlan > 0 && n > maxPlan)
+				{
+					n = maxPlan;
+				}
+				for (int i = 1; i < n; i++)
+				{
+					alpha = (1 - planOpacity) / i + planOpacity;
+					p = plan.plans + i;
+					engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
+				}
+
+				float sinceButtonPress = (now.QuadPart - lastButtonPress.QuadPart) / float(freq.QuadPart);
+				if (sinceButtonPress > 1.5)
+				{
+					updateControlHint();
+					lastButtonPress.QuadPart = now.QuadPart;
+				}
 			}
 		}
 
