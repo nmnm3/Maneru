@@ -36,18 +36,19 @@ game.next ホールドとメイン画面とnext画面合わせての個数。10�
 game.delay_at_beginning 開始画面の待機時間
 game.garbage_min 受ける最小火力
 game.garbage_max 受ける最大火力
+game.garbage_autolevel 自動的に火力を受ける水準、最高点がこのライン数以下なら最小火力を受ける
 game.hole_repeat 穴ばら率、0=完全穴ばら、1.0=完全直列
 game.exact_cc_move CCの動き縛り。yes=CCの読みと違ったら操作は無効化される、no=縛りなし
 game.hold_lock ホールドしたばかりのミノはすぐにホールドで出すことができない
 ```
 グラフィック
 ```
-graphic.resolution 解像度。600x400、900x600、1200x800のみ対応
+graphic.resolution 解像度。600x400、900x600、1200x800、1800x1200のみ対応
 graphic.fps 毎秒フレーム数
 graphic.hint_flash_cycle 次の置き場所の点滅周期
 graphic.hint_min_opacity 次の置き場所の最小透過度
 graphic.plan_opacity 先読みの透過度
-
+graphic.max_plan 先読みの最大表示個数
 ```
 ボタン配置
 ```
@@ -60,6 +61,8 @@ control.b XBOX基準でBボタン、プロコンAボタン
 control.x XBOX基準でXボタン、プロコンYボタン
 control.y XBOX基準でYボタン、プロコンXボタン
 control.start スタートボタン / プラスボタン
+control.ls 左スティックボタン
+control.rs 右スティックボタン
 ```
 
 ボタン機能
@@ -74,6 +77,8 @@ rotate_clockwise 時計回り
 rotate_counter_clockwise 反時計回り
 garbage 火力カウンタ
 hold ホールド
+reset_piece ミノをスタート位置に戻す
+toggle_cc CCをON/OFFに切り替える
 ```
 
 ColdClear

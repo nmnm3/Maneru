@@ -33,18 +33,19 @@ game.next: Number of pieces in next preview at the beginning. After hold and the
 game.delay_at_beginning: Delay time at the beginning, to give the bot some time for thinking.
 game.garbage_min: Minimum value of garbage counter.
 game.garbage_max: Maximum value of garbage counter.
+game.garbage_autolevel: If highest line is below this level, recieve garbage_min automatically.
 game.hole_repeat: Possibility of a repeated garbage hole. 1.0 for always repeat and 0 for never repeat.
 game.exact_cc_move: Follow the bots exactly. Prevents other moves from happening. Set to "no" if you want to do yourself.
 game.hold_lock: Whether an hold piece can be switch out immediately. By default you must do at least one hard drop before you can hold again.
 ```
 graphic
 ```
-graphic.resolution: 600x400、900x600、1200x800
+graphic.resolution: 600x400, 900x600, 1200x800, 1800x1200
 graphic.fps: frame per seconds
 graphic.hint_flash_cycle: in seconds.
 graphic.hint_min_opacity: 0~1.0
 graphic.plan_opacity: 0~1.0
-
+graphic.max_plan: Maximum number of plans to display, 0 to display all
 ```
 Button assignment, in the format of `button`=`function`
 
@@ -59,6 +60,8 @@ control.b: B(XBOX) / A(Procon)
 control.x: X(XBOX) / Y(Procon)
 control.y: Y(XBOX) / X(Procon)
 control.start: Start(XBOX) / +(Procon)
+control.ls Left stick button
+control.rs Right stick button
 ```
 Functions
 ```
@@ -72,6 +75,8 @@ rotate_clockwise
 rotate_counter_clockwise
 hold
 garbage: increase garbage counter
+reset_piece: reset current piece to spawn position
+toggle_cc: turn on/off CC
 ```
 
 ColdClear bot settings
