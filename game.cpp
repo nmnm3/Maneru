@@ -583,7 +583,7 @@ ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], co
 	{
 		{ControllerAction::Left, &TetrisGame::MoveLeft, 20, 0},
 		{ControllerAction::Right, &TetrisGame::MoveRight, 20, 0},
-		{ControllerAction::Down, &TetrisGame::MoveDown, 20, 0},
+		{ControllerAction::Down, &TetrisGame::MoveDown, 100, 0},
 		{ControllerAction::RotateClockwise, &TetrisGame::RotateClockwise, 20, 0},
 		{ControllerAction::RotateCounterClockwise, &TetrisGame::RotateCounterClockwise, 20, 0},
 		{ControllerAction::FastLeft, &TetrisGame::FastLeft, 15, 1},
