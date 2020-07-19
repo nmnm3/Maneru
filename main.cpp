@@ -167,6 +167,7 @@ public:
 	std::mutex nextLock;
 
 	bool enableColdClear = true;
+	bool drawHint = true;
 
 	void pickNext()
 	{
@@ -370,6 +371,11 @@ public:
 		}
 	}
 
+	void actionToggleHint()
+	{
+		drawHint = !drawHint;
+	}
+
 	void initControl()
 	{
 		map<string, function<void(void)>> actions;
@@ -383,6 +389,7 @@ public:
 		actions["hard_drop"] = [this]() { this->actionHardDrop(); };
 		actions["hold"] = [this]() { this->actionHold(); };
 		actions["toggle_cc"] = [this]() { this->actionToggleColdClear(); };
+		actions["toggle_hint"] = [this]() { this->actionToggleHint(); };
 
 		map<string, string> mapping =
 		{
@@ -490,7 +497,7 @@ public:
 			else
 				engine->DrawHold(game.GetHoldPiece(), false);
 
-			if (enableColdClear)
+			if (enableColdClear && drawHint)
 			{
 				if (holdPressed != ccm.hold)
 					engine->DrawHoldHint(alpha);
