@@ -464,7 +464,7 @@ public:
 
 		game.SpawnCurrentPiece();
 		WCHAR strNodes[0x20];
-		WCHAR strDepth[0x20];
+		WCHAR strValue[0x20];
 		WCHAR strPieceIndex[0x20];
 		WCHAR strCombo[0x20];
 		WCHAR strGarbage[0x20];
@@ -474,7 +474,7 @@ public:
 		LPCWSTR stats[32] =
 		{
 			strNodes,
-			strDepth,
+			strValue,
 			strPieceIndex,
 			strCombo,
 			strGarbage,
@@ -530,7 +530,7 @@ public:
 			}
 
 			wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
-			wsprintf(strDepth, L"深さ: %d", ccm.depth);
+			wsprintf(strValue, L"評価値: %d", ccm.evaluation_result);
 			wsprintf(strPieceIndex, L"7種残り: %d", 7 - game.GetPieceIndex() % 7);
 
 			if (combo > 1)
