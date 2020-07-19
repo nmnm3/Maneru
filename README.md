@@ -28,7 +28,6 @@ L, R：ホールド
 火力は次のハードドロップの後で受ける、受けすぎるとゲームオーバー。
 
 Lスティックボタン：ミノを出現位置に戻す
-
 Rスティックボタン：CCをON/OFFに切り替える
 
 ## 詳しい設定
@@ -37,6 +36,7 @@ maneru.config
 ゲーム
 ```
 game.next ホールドとメイン画面とnext画面合わせての個数。10以上だとnext画面は8まで、CCからは見えている。
+game.gravity 落下重力。0=落下しない、20=瞬間落下。中間値はまだ実装されていない
 game.delay_at_beginning 開始画面の待機時間
 game.garbage_min 受ける最小火力
 game.garbage_max 受ける最大火力

@@ -33,6 +33,7 @@ R Stick Button: Toggle ON/OFF of CC
 game
 ```
 game.next: Number of pieces in next preview at the beginning. After hold and the first piece spawn, it's decreased by 2. If set to >10, only 8 pieces are displayed on the screen, but CC will see every piece.
+game.gravity: 0 or 20. 0(default): no drop due to gravity. 20: instant drop.
 game.delay_at_beginning: Delay time at the beginning, to give the bot some time for thinking.
 game.garbage_min: Minimum value of garbage counter.
 game.garbage_max: Maximum value of garbage counter.
