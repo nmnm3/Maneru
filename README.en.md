@@ -25,6 +25,9 @@ L,R: Hold
 
 +: Increase garbage counter
 
+L Stick Button: Return current piece to start position
+R Stick Button: Toggle ON/OFF of CC
+
 ## maneru.config
 
 game
