@@ -3,7 +3,7 @@
 using namespace Maneru;
 #pragma comment (lib, "cold_clear.dll.lib")
 
-CCBot::CCBot() : plans()
+CCBot::CCBot() : plans(), validPlans(0)
 {
 	ConfigNode n = GetGlobalConfig()->GetNode("cc");
 
@@ -31,12 +31,18 @@ CCBot::CCBot() : plans()
 	n.GetValue("move_time", weights.move_time);
 	n.GetValue("wasted_t", weights.wasted_t);
 
-	bot = cc_launch_async(&options, &weights);
+	bot = nullptr;
 }
 
 CCBot::~CCBot()
 {
 	cc_destroy_async(bot);
+}
+
+void Maneru::CCBot::Start(bool is20g)
+{
+	options.mode = is20g ? CC_20G : CC_0G;
+	bot = cc_launch_async(&options, &weights);
 }
 
 void CCBot::Stop()

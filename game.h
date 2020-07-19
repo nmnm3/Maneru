@@ -96,6 +96,7 @@ public:
 	int GetHighestLine() const;
 	void AddGarbage(int lines, float holeRepeat);
 
+	void SetGravity(float gravity);
 	void SetColor(int x, int y, MinoType color);
 	MinoType GetColor(int x, int y) const;
 	int RemainingNext() const;
@@ -109,6 +110,7 @@ private:
 	bool FastDrop();
 	bool FastLeft();
 	bool FastRight();
+	bool Is20G() const;
 
 	unsigned int board[VISIBLE_LINES * 2]; // One uint per line, one bit per cell. Bottom up.
 	MinoType boardColor[VISIBLE_LINES * 2][BOARD_WIDTH]; // Color of each cell
@@ -118,6 +120,7 @@ private:
 	int pieceIndex;
 	std::deque<MinoType> next;
 	std::mutex m;
+	float gravity;
 };
 
 }

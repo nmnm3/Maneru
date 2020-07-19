@@ -130,6 +130,7 @@ TetrisGame::TetrisGame()
 	hold = PieceNone;
 	current.type = PieceNone;
 	pieceIndex = 0;
+	gravity = 0;
 }
 
 void TetrisGame::PushNextPiece(MinoType t)
@@ -227,7 +228,9 @@ bool TetrisGame::SpawnCurrentPiece()
 
 	LineRect rect;
 	rect.lines = board + current.py;
-	return current.Test(rect);
+	bool alive = current.Test(rect);
+	if (alive && Is20G()) FastDrop();
+	return alive;
 }
 
 void Maneru::TetrisGame::ResetCurrentPiece()
@@ -235,6 +238,7 @@ void Maneru::TetrisGame::ResetCurrentPiece()
 	current.px = 3;
 	current.py = VISIBLE_LINES - 3;
 	current.state = 0;
+	if (Is20G()) FastDrop();
 }
 
 MinoType TetrisGame::HoldCurrentPiece()
@@ -247,12 +251,14 @@ MinoType TetrisGame::HoldCurrentPiece()
 		MinoType t = hold;
 		hold = current.type;
 		current.type = t;
+		if (Is20G()) FastDrop();
 		return t;
 	}
 	else
 	{
 		hold = current.type;
 		current.type = PopNextPiece();
+		if (Is20G()) FastDrop();
 		return current.type;
 	}
 }
@@ -268,6 +274,7 @@ bool TetrisGame::MoveLeft()
 		current.px = px;
 		return false;
 	}
+	if (Is20G()) FastDrop();
 	return true;
 }
 
@@ -282,6 +289,7 @@ bool TetrisGame::MoveRight()
 		current.px = px;
 		return false;
 	}
+	if (Is20G()) FastDrop();
 	return true;
 }
 
@@ -296,6 +304,7 @@ bool TetrisGame::MoveDown()
 		current.py = py;
 		return false;
 	}
+	if (Is20G()) FastDrop();
 	return true;
 }
 
@@ -319,6 +328,7 @@ bool TetrisGame::RotateClockwise()
 			rect.lines = board + current.py;
 			if (current.Test(rect))
 			{
+				if (Is20G()) FastDrop();
 				return true;
 			}
 		}
@@ -336,6 +346,7 @@ bool TetrisGame::RotateClockwise()
 			rect.lines = board + current.py;
 			if (current.Test(rect))
 			{
+				if (Is20G()) FastDrop();
 				return true;
 			}
 		}
@@ -370,6 +381,7 @@ bool TetrisGame::RotateCounterClockwise()
 			rect.lines = board + current.py;
 			if (current.Test(rect))
 			{
+				if (Is20G()) FastDrop();
 				return true;
 			}
 		}
@@ -387,6 +399,7 @@ bool TetrisGame::RotateCounterClockwise()
 			rect.lines = board + current.py;
 			if (current.Test(rect))
 			{
+				if (Is20G()) FastDrop();
 				return true;
 			}
 		}
@@ -397,6 +410,11 @@ bool TetrisGame::RotateCounterClockwise()
 	current.px = lastx;
 	current.py = lasty;
 	return false;
+}
+
+void Maneru::TetrisGame::SetGravity(float gravity)
+{
+	this->gravity = gravity;
 }
 
 void TetrisGame::SetColor(int x, int y, MinoType color)
@@ -713,6 +731,11 @@ bool Maneru::TetrisGame::FastRight()
 	if (!MoveRight()) return false;
 	while (MoveRight());
 	return true;
+}
+
+bool Maneru::TetrisGame::Is20G() const
+{
+	return gravity >= 20.0;
 }
 
 unsigned int BlockPosition::at(int x, int y) const

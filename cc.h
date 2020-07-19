@@ -14,6 +14,7 @@ class CCBot
 public:
 	CCBot();
 	~CCBot();
+	void Start(bool is20g);
 	void Stop();
 	void AddPiece(int p);
 	int Next(CCMove& m, int incoming);

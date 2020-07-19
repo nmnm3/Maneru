@@ -18,7 +18,6 @@ using std::function;
 
 ControllerInterface *ctrl;
 GraphicEngineInterface* engine;
-TetrisGame globalgame;
 ConfigNode *gameConfig;
 ConfigNode *controlConfig;
 ConfigNode *graphicConfig;
@@ -123,10 +122,29 @@ struct NextGenerator7Bag
 	MinoType bag[7];
 };
 
-
 class GameLoop
 {
 public:
+	GameLoop()
+	{
+		initControl();
+
+		gameConfig->GetValue("next", next);
+		gameConfig->GetValue("gravity", gravity);
+		gameConfig->GetValue("delay_at_beginning", delay);
+		gameConfig->GetValue("garbage_min", garbageMin);
+		gameConfig->GetValue("garbage_max", garbageMax);
+		gameConfig->GetValue("garbage_autolevel", garbageAutoLevel);
+		gameConfig->GetValue("hole_repeat", holeRepeat);
+		gameConfig->GetValue("exact_cc_move", exactCCMove);
+		gameConfig->GetValue("hold_lock", holdLock);
+		graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
+		graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
+		graphicConfig->GetValue("plan_opacity", planOpacity);
+		graphicConfig->GetValue("max_plan", maxPlan);
+
+	}
+
 	void Start()
 	{
 		running = true;
@@ -142,6 +160,7 @@ public:
 
 	LARGE_INTEGER freq, last, now;
 	int next = 7;
+	float gravity = 0.0f;
 	int delay = 1000;
 	int garbageMin = 5;
 	int garbageMax = 10;
@@ -430,21 +449,12 @@ public:
 
 	void Run()
 	{
-		initControl();
+		game.SetGravity(gravity);
+		if (gravity >= 20.0f)
+			cc.Start(true);
+		else
+			cc.Start(false);
 
-		gameConfig->GetValue("next", next);
-		gameConfig->GetValue("delay_at_beginning", delay);
-		gameConfig->GetValue("garbage_min", garbageMin);
-		gameConfig->GetValue("garbage_max", garbageMax);
-		gameConfig->GetValue("garbage_autolevel", garbageAutoLevel);
-		gameConfig->GetValue("hole_repeat", holeRepeat);
-		gameConfig->GetValue("exact_cc_move", exactCCMove);
-		gameConfig->GetValue("hold_lock", holdLock);
-		graphicConfig->GetValue("hint_flash_cycle", hintFlashCycle);
-		graphicConfig->GetValue("hint_min_opacity", hintMinOpacity);
-		graphicConfig->GetValue("plan_opacity", planOpacity);
-		graphicConfig->GetValue("max_plan", maxPlan);
-		
 		QueryPerformanceFrequency(&freq);
 
 		for (int i = 0; i < next; i++)
