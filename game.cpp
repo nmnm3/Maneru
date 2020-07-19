@@ -539,6 +539,7 @@ struct PathNode
 	int cost;
 	ControllerAction action;
 	int from;
+	ControllerAction lastRotate;
 };
 
 constexpr int d1 = BOARD_WIDTH + 2;
@@ -620,6 +621,7 @@ ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], co
 		node.from = -1;
 		node.cost = 10;
 		node.action = ControllerAction::None;
+		node.lastRotate = ControllerAction::None;
 	}
 
 	int bestIndex = -1;
@@ -656,6 +658,16 @@ ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], co
 					if (diff < 0) diff = -diff;
 					cost += diff * entry.distanceMultiplier;
 				}
+				ControllerAction lastRotate = positions[startIndex].lastRotate;
+				if (entry.action == ControllerAction::RotateClockwise ||
+					entry.action == ControllerAction::RotateCounterClockwise)
+				{
+					if (lastRotate != entry.action)
+					{
+						cost += 5;
+						lastRotate = entry.action;
+					}
+				}
 
 				int endIndex = end.PathIndex();
 				PathNode& node = positions[endIndex];
@@ -664,6 +676,7 @@ ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], co
 					node.cost = cost;
 					node.action = entry.action;
 					node.from = startIndex;
+					node.lastRotate = lastRotate;
 					q.push(end);
 				}
 			}
