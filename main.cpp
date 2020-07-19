@@ -378,6 +378,7 @@ public:
 			numPlans = 0;
 			ccm.depth = 0;
 			ccm.nodes = 0;
+			ccm.evaluation_result = 0;
 			ctrlHint.cost = 0;
 			ctrlHint.actions.clear();
 		}
