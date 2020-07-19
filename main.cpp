@@ -88,13 +88,14 @@ struct NextGenerator7Bag
 {
 	NextGenerator7Bag() : current(7), bag()
 	{
+		e.seed(std::random_device()());
 		Reset();
 	}
 	MinoType Next()
 	{
 		if (current == 7)
 		{
-			std::random_shuffle(bag, bag + 7);
+			std::shuffle(bag, bag + 7, e);
 			current = 0;
 		}
 		return bag[current++];
@@ -117,6 +118,7 @@ struct NextGenerator7Bag
 		}
 	}
 
+	std::default_random_engine e;
 	int current;
 	MinoType bag[7];
 };
@@ -444,7 +446,6 @@ public:
 		graphicConfig->GetValue("max_plan", maxPlan);
 		
 		QueryPerformanceFrequency(&freq);
-		srand(GetTickCount());
 
 		for (int i = 0; i < next; i++)
 			pickNext();
