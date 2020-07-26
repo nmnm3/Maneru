@@ -55,20 +55,50 @@ struct SRSTestPair
 };
 
 // https://harddrop.com/wiki/SRS
-const SRSTestPair srsMatrixClockwiseForI[4][5] =
+const SRSTestPair srsMatrixClockwise[7][4][5] =
 {
-	{ {0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2} }, // 0->R
-	{ {0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1} }, // R->2
-	{ {0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2} }, // 2->L
-	{ {0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1} }, // L->0
-};
-
-const SRSTestPair srsMatrixClockwiseForTSZLJ[4][5] =
-{
-	{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
-	{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
-	{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
-	{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	{ //I
+		{ {0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2} }, // 0->R
+		{ {0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1} }, // R->2
+		{ {0, 0}, {2, 0}, {-1, 0}, {2, 1}, {-1, -2} }, // 2->L
+		{ {0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1} }, // L->0
+	},
+	{ //O
+		{{0, 0},{0, 0},{0, 0},{0, 0},{0, 0}},
+		{{0, 0},{0, 0},{0, 0},{0, 0},{0, 0}},
+		{{0, 0},{0, 0},{0, 0},{0, 0},{0, 0}},
+		{{0, 0},{0, 0},{0, 0},{0, 0},{0, 0}},
+	},
+	{ //T
+		{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
+		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
+		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
+		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	},
+	{ //L
+		{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
+		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
+		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
+		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	},
+	{ //J
+		{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
+		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
+		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
+		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	},
+	{ //S
+		{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
+		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
+		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
+		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	},
+	{ //Z
+		{ {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} }, // 0->R
+		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, // R->2
+		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, // 2->L
+		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, // L->0
+	},
 };
 
 bool Tetrimino::Test(const LineRect& rect) const
@@ -138,7 +168,7 @@ void TetrisGame::PushNextPiece(MinoType t)
 	next.push_back(t);
 }
 
-void Maneru::TetrisGame::PushBackCurrentPiece()
+void TetrisGame::PushBackCurrentPiece()
 {
 	next.push_front(current.type);
 	pieceIndex--;
@@ -233,7 +263,7 @@ bool TetrisGame::SpawnCurrentPiece()
 	return alive;
 }
 
-void Maneru::TetrisGame::ResetCurrentPiece()
+void TetrisGame::ResetCurrentPiece()
 {
 	current.px = 3;
 	current.py = VISIBLE_LINES - 3;
@@ -310,109 +340,17 @@ bool TetrisGame::MoveDown()
 
 bool TetrisGame::RotateClockwise()
 {
-	int lastState = current.state;
-	current.state++;
-	if (current.state == 4) current.state = 0;
-	// Tests for Super Rotation System
-	int lastx = current.px;
-	int lasty = current.py;
-	switch (current.type)
-	{
-	case PieceI:
-		for (int i = 0; i < 5; i++)
-		{
-			SRSTestPair pair = srsMatrixClockwiseForI[lastState][i];
-			current.px = lastx + pair.x;
-			current.py = lasty + pair.y;
-			LineRect rect;
-			rect.lines = board + current.py;
-			if (current.Test(rect))
-			{
-				if (Is20G()) FastDrop();
-				return true;
-			}
-		}
-		break;
-	case PieceO:
-		return true;
-	default:
-		//TSZLJ
-		for (int i = 0; i < 5; i++)
-		{
-			SRSTestPair pair = srsMatrixClockwiseForTSZLJ[lastState][i];
-			current.px = lastx + pair.x;
-			current.py = lasty + pair.y;
-			LineRect rect;
-			rect.lines = board + current.py;
-			if (current.Test(rect))
-			{
-				if (Is20G()) FastDrop();
-				return true;
-			}
-		}
-
-		break;
-	}
-	// Rotation failed
-	current.state = lastState;
-	current.px = lastx;
-	current.py = lasty;
-	return false;
+	SRSInfo info = TryRotateClockwise();
+	return info.index != -1;
 }
 
 bool TetrisGame::RotateCounterClockwise()
 {
-	int lastState = current.state;
-	current.state--;
-	if (current.state < 0) current.state = 3;
-
-	// Tests for Super Rotation System
-	int lastx = current.px;
-	int lasty = current.py;
-	switch (current.type)
-	{
-	case PieceI:
-		for (int i = 0; i < 5; i++)
-		{
-			SRSTestPair pair = srsMatrixClockwiseForI[current.state][i];
-			current.px = lastx - pair.x;
-			current.py = lasty - pair.y;
-			LineRect rect;
-			rect.lines = board + current.py;
-			if (current.Test(rect))
-			{
-				if (Is20G()) FastDrop();
-				return true;
-			}
-		}
-		break;
-	case PieceO:
-		return false;
-	default:
-		//TSZLJ
-		for (int i = 0; i < 5; i++)
-		{
-			SRSTestPair pair = srsMatrixClockwiseForTSZLJ[current.state][i];
-			current.px = lastx - pair.x;
-			current.py = lasty - pair.y;
-			LineRect rect;
-			rect.lines = board + current.py;
-			if (current.Test(rect))
-			{
-				if (Is20G()) FastDrop();
-				return true;
-			}
-		}
-		break;
-	}
-	// Rotation failed
-	current.state = lastState;
-	current.px = lastx;
-	current.py = lasty;
-	return false;
+	SRSInfo info = TryRotateCounterClockwise();
+	return info.index != -1;
 }
 
-void Maneru::TetrisGame::SetGravity(float gravity)
+void TetrisGame::SetGravity(float gravity)
 {
 	this->gravity = gravity;
 }
@@ -453,7 +391,7 @@ bool TetrisGame::ClearLines()
 	return cleared;
 }
 
-int Maneru::TetrisGame::GetHighestLine() const
+int TetrisGame::GetHighestLine() const
 {
 	int l = 0;
 	while (this->board[l] != 0) l++;
@@ -517,7 +455,7 @@ int TetrisGame::RemainingNext() const
 	return next.size();
 }
 
-int Maneru::TetrisGame::GetPieceIndex() const
+int TetrisGame::GetPieceIndex() const
 {
 	return pieceIndex;
 }
@@ -532,6 +470,21 @@ void TetrisGame::GetBoard(GameBoard &b) const
 			b.field[y * 10 + x] = (line & (1 << x)) > 0;
 		}
 	}
+}
+
+void TetrisGame::GetSRSInfo(SRSInfo& cw, SRSInfo& ccw)
+{
+	int lastState = current.state;
+	int lastx = current.px;
+	int lasty = current.py;
+	cw = TryRotateClockwise();
+	current.state = lastState;
+	current.px = lastx;
+	current.py = lasty;
+	ccw = TryRotateCounterClockwise();
+	current.state = lastState;
+	current.px = lastx;
+	current.py = lasty;
 }
 
 struct PathNode
@@ -596,7 +549,7 @@ struct ActionTableEntry
 	int distanceMultiplier;
 };
 
-ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], const unsigned char expectedY[4])
+ControllerHint TetrisGame::FindPath(const unsigned char expectedX[4], const unsigned char expectedY[4])
 {
 	const static ActionTableEntry table[] =
 	{
@@ -704,7 +657,7 @@ ControllerHint Maneru::TetrisGame::FindPath(const unsigned char expectedX[4], co
 	return hint;
 }
 
-int Maneru::TetrisGame::FindPathIndex() const
+int TetrisGame::FindPathIndex() const
 {
 	int d1 = BOARD_WIDTH + 2;
 	int d2 = VISIBLE_LINES + 4;
@@ -717,7 +670,7 @@ int Maneru::TetrisGame::FindPathIndex() const
 	return index;
 }
 
-bool Maneru::TetrisGame::FastDrop()
+bool TetrisGame::FastDrop()
 {
 	int lasty = current.py;
 	LineRect rect;
@@ -732,23 +685,94 @@ bool Maneru::TetrisGame::FastDrop()
 	return current.py != lasty;
 }
 
-bool Maneru::TetrisGame::FastLeft()
+bool TetrisGame::FastLeft()
 {
 	if (!MoveLeft()) return false;
 	while (MoveLeft());
 	return true;
 }
 
-bool Maneru::TetrisGame::FastRight()
+bool TetrisGame::FastRight()
 {
 	if (!MoveRight()) return false;
 	while (MoveRight());
 	return true;
 }
 
-bool Maneru::TetrisGame::Is20G() const
+bool TetrisGame::Is20G() const
 {
 	return gravity >= 20.0;
+}
+
+SRSInfo TetrisGame::TryRotateClockwise()
+{
+	int lastState = current.state;
+	current.state++;
+	if (current.state == 4) current.state = 0;
+
+	SRSInfo info = { -1, -1, {} };
+	// Tests for Super Rotation System
+	int lastx = current.px;
+	int lasty = current.py;
+	for (int i = 0; i < 5; i++)
+	{
+		SRSTestPair pair = srsMatrixClockwise[current.type][lastState][i];
+		current.px = lastx + pair.x;
+		current.py = lasty + pair.y;
+		LineRect rect;
+		rect.lines = board + current.py;
+		if (current.Test(rect))
+		{
+			info.state = current.state;
+			info.index = i;
+			info.x = pair.x;
+			info.y = pair.y;
+			if (Is20G()) FastDrop();
+			return info;
+		}
+	}
+
+	// Rotation failed
+	current.state = lastState;
+	current.px = lastx;
+	current.py = lasty;
+	return info;
+}
+
+SRSInfo TetrisGame::TryRotateCounterClockwise()
+{
+	int lastState = current.state;
+	current.state--;
+	if (current.state < 0) current.state = 3;
+
+	SRSInfo info = { -1, -1, {} };
+	// Tests for Super Rotation System
+	int lastx = current.px;
+	int lasty = current.py;
+
+	for (int i = 0; i < 5; i++)
+	{
+		SRSTestPair pair = srsMatrixClockwise[current.type][current.state][i];
+		current.px = lastx - pair.x;
+		current.py = lasty - pair.y;
+		LineRect rect;
+		rect.lines = board + current.py;
+		if (current.Test(rect))
+		{
+			info.state = current.state;
+			info.index = i;
+			info.x = -pair.x;
+			info.y = -pair.y;
+			if (Is20G()) FastDrop();
+			return info;
+		}
+	}
+
+	// Rotation failed
+	current.state = lastState;
+	current.px = lastx;
+	current.py = lasty;
+	return info;
 }
 
 unsigned int BlockPosition::at(int x, int y) const

@@ -182,6 +182,7 @@ public:
 	int incomingGarbage = 0;
 	int combo = 0;
 	LARGE_INTEGER lastButtonPress;
+	SRSInfo infoCW, infoCCW;
 
 	CCMove ccm;
 	int numPlans;
@@ -215,27 +216,37 @@ public:
 
 	void actionLeft()
 	{
-		game.MoveLeft(); QueryPerformanceCounter(&lastButtonPress);
+		game.MoveLeft();
+		QueryPerformanceCounter(&lastButtonPress);
+		onPieceMoved();
 	}
 
 	void actionRight()
 	{
-		game.MoveRight(); QueryPerformanceCounter(&lastButtonPress);
+		game.MoveRight();
+		QueryPerformanceCounter(&lastButtonPress);
+		onPieceMoved();
 	}
 
 	void actionSoftDrop()
 	{
-		game.MoveDown(); QueryPerformanceCounter(&lastButtonPress);
+		game.MoveDown();
+		QueryPerformanceCounter(&lastButtonPress);
+		onPieceMoved();
 	}
 
 	void actionRotateCounterClockwise()
 	{
-		game.RotateCounterClockwise(); QueryPerformanceCounter(&lastButtonPress);
+		game.RotateCounterClockwise();
+		QueryPerformanceCounter(&lastButtonPress);
+		onPieceMoved();
 	}
 
 	void actionRotateClockwise()
 	{
-		game.RotateClockwise(); QueryPerformanceCounter(&lastButtonPress);
+		game.RotateClockwise();
+		QueryPerformanceCounter(&lastButtonPress);
+		onPieceMoved();
 	}
 
 	void actionGarbage()
@@ -254,9 +265,15 @@ public:
 		}
 	}
 
+	void onPieceMoved()
+	{
+		game.GetSRSInfo(infoCW, infoCCW);
+	}
+
 	void actionResetPiece()
 	{
 		game.ResetCurrentPiece();
+		onPieceMoved();
 	}
 
 	void hardReset()
@@ -336,6 +353,7 @@ public:
 		}
 
 		running = game.SpawnCurrentPiece();
+		onPieceMoved();
 		if (!running)
 		{
 			Fatal(L"ゲームオーバー");
@@ -364,6 +382,7 @@ public:
 		if (holdLock && holdPressed)
 			return;
 		game.HoldCurrentPiece();
+		onPieceMoved();
 		holdPressed = !holdPressed;
 		if (enableColdClear)
 			updateControlHint();
@@ -474,13 +493,15 @@ public:
 		QueryPerformanceCounter(&last);
 
 		game.SpawnCurrentPiece();
+		onPieceMoved();
 		WCHAR strNodes[0x20];
 		WCHAR strValue[0x20];
 		WCHAR strPieceIndex[0x20];
 		WCHAR strCombo[0x20];
 		WCHAR strGarbage[0x20];
-		WCHAR strMissPrevent[0x20];
-		WCHAR strHoldLock[0x20];
+		WCHAR strState[0x20];
+		WCHAR strCW[0x20];
+		WCHAR strCCW[0x20];
 		WCHAR strMoveCost[0x20];
 		LPCWSTR stats[32] =
 		{
@@ -489,11 +510,12 @@ public:
 			strPieceIndex,
 			strCombo,
 			strGarbage,
-			strMissPrevent,
-			strHoldLock,
+			strState,
+			strCW,
+			strCCW,
 			strMoveCost,
 		};
-		const int fixedStats = 8;
+		const int fixedStats = 9;
 		while (running)
 		{
 			QueryPerformanceCounter(&now);
@@ -550,9 +572,16 @@ public:
 				strCombo[0] = '\0';
 
 			wsprintf(strGarbage, L"受ける火力: %d", incomingGarbage);
-			wsprintf(strMissPrevent, L"CC縛り: %s", exactCCMove ? L"ON" : L"OFF");
-			wsprintf(strHoldLock, L"ホールドロック: %s", holdLock ? L"ON" : L"OFF");
-			wsprintf(strMoveCost, L"Cost: %d", ctrlHint.cost);
+			wsprintf(strState, L"向き: %d", game.GetCurrentPiece().state);
+			if (infoCW.index >= 0)
+				wsprintf(strCW, L"A/Y: %d(%d,%d)", infoCW.index, infoCW.x, infoCW.y);
+			else
+				wcscpy(strCW, L"A/Y: 不可能");
+			if (infoCCW.index >= 0)
+				wsprintf(strCCW, L"B/X: %d(%d,%d)", infoCCW.index, infoCCW.x, infoCCW.y);
+			else
+				wcscpy(strCCW, L"B/X: 不可能");
+			wsprintf(strMoveCost, L"コスト: %d", ctrlHint.cost);
 			int statIndex = fixedStats;
 
 			for (auto it = ctrlHint.actions.rbegin(); it != ctrlHint.actions.rend(); it++)

@@ -70,6 +70,13 @@ struct ControllerHint
 	int cost;
 };
 
+struct SRSInfo
+{
+	int state;
+	int index;
+	int x, y;
+};
+
 class TetrisGame
 {
 public:
@@ -103,6 +110,7 @@ public:
 	int GetPieceIndex() const;
 
 	void GetBoard(GameBoard& b) const;
+	void GetSRSInfo(SRSInfo& cw, SRSInfo& ccw);
 
 	ControllerHint FindPath(const unsigned char expectedX[4], const unsigned char expectedY[4]);
 private:
@@ -111,6 +119,8 @@ private:
 	bool FastLeft();
 	bool FastRight();
 	bool Is20G() const;
+	SRSInfo TryRotateClockwise();
+	SRSInfo TryRotateCounterClockwise();
 
 	unsigned int board[VISIBLE_LINES * 2]; // One uint per line, one bit per cell. Bottom up.
 	MinoType boardColor[VISIBLE_LINES * 2][BOARD_WIDTH]; // Color of each cell
