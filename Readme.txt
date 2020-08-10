@@ -26,7 +26,7 @@ game.garbage_min 受ける最小火力
 game.garbage_max 受ける最大火力
 game.garbage_autolevel 自動的に火力を受ける水準、最高点がこのライン数以下なら最小火力を受ける
 game.hole_repeat 穴ばら率、0=完全穴ばら、1.0=完全直列
-game.exact_cc_move CCの動き縛り。yes=CCの読みと違ったら操作は無効化される、no=縛りなし
+game.exact_cc_move yes: CCが常に最善手を出して、必ず同じ場所にミノを置かなければならない。no: ミノを自由に置ける、CCが先読みを出す。
 game.hold_lock ホールドしたばかりのミノはすぐにホールドで出すことができない
 
 グラフィック

@@ -28,6 +28,7 @@ L, R：ホールド
 火力は次のハードドロップの後で受ける、受けすぎるとゲームオーバー。
 
 Lスティックボタン：ミノを出現位置に戻す
+
 Rスティックボタン：CCをON/OFFに切り替える
 
 ## 詳しい設定
@@ -42,7 +43,7 @@ game.garbage_min 受ける最小火力
 game.garbage_max 受ける最大火力
 game.garbage_autolevel 自動的に火力を受ける水準、最高点がこのライン数以下なら最小火力を受ける
 game.hole_repeat 穴ばら率、0=完全穴ばら、1.0=完全直列
-game.exact_cc_move CCの動き縛り。yes=CCの読みと違ったら操作は無効化される、no=縛りなし
+game.exact_cc_move yes: CCが常に最善手を出して、必ず同じ場所にミノを置かなければならない。no: ミノを自由に置ける、CCがハードドロップ後の先読みを出す。
 game.hold_lock ホールドしたばかりのミノはすぐにホールドで出すことができない
 ```
 グラフィック
@@ -90,7 +91,7 @@ ColdClear
 cc.speculate nextの先読み
 cc.pcloop パフェモード
 cc.min_nodes 最小限の読み
-cc.max_nodes 最大限の読み。上げると読みの深さは増すがメモリ消費量も上がる
+cc.max_nodes 最大限の読み。上げると読みの深さは増すがメモリ消費量も上がる。目安は5000000で1GBくらい。
 cc.threads 計算に使うコア/スレッド数。上げると読みが早くなるがCPU使用率も上がる
 ```
 
@@ -104,7 +105,7 @@ cc.threads 計算に使うコア/スレッド数。上げると読みが早く�
 
 ### ColdClear
 ```
-git clone https://github.com/MinusKelvin/cold-clear.git
+git clone https://github.com/nmnm3/cold-clear.git
 cd cold-clear
 cargo build --release
 ```

@@ -39,7 +39,7 @@ game.garbage_min: Minimum value of garbage counter.
 game.garbage_max: Maximum value of garbage counter.
 game.garbage_autolevel: If highest line is below this level, recieve garbage_min automatically.
 game.hole_repeat: Possibility of a repeated garbage hole. 1.0 for always repeat and 0 for never repeat.
-game.exact_cc_move: Follow the bots exactly. Prevents other moves from happening. Set to "no" if you want to do yourself.
+game.exact_cc_move: Yes=CC outputs best moves and plan, must follow the bot's move exactly. No=CC outputs best plan for current hard drop.
 game.hold_lock: Whether an hold piece can be switch out immediately. By default you must do at least one hard drop before you can hold again.
 ```
 graphic
@@ -102,7 +102,7 @@ cc.threads: Number of threads CC will use. Increase this for faster thinking. Th
 
 ### ColdClear
 ```
-git clone https://github.com/MinusKelvin/cold-clear.git
+git clone https://github.com/nmnm3/cold-clear.git
 cd cold-clear
 cargo build --release
 ```
