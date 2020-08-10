@@ -33,6 +33,11 @@ struct BlockPosition
 	unsigned int operator[](int index) const;
 };
 
+struct BlockCoordinates
+{
+	unsigned char x[4], y[4];
+};
+
 struct Tetrimino
 {
 	int px, py; // Bottom left corner of the piece rect.
@@ -40,6 +45,7 @@ struct Tetrimino
 	int state; // one of 4 states.
 	bool Test(const LineRect& rect) const;
 	const BlockPosition& GetPosition() const;
+	BlockCoordinates GetBlockCoordinates() const;
 };
 
 // CC requires bool array to reset.

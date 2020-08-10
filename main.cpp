@@ -186,6 +186,7 @@ public:
 
 	CCMove ccm;
 	int numPlans;
+	CCPlanPlacement ccBestPlan[32];
 	std::mutex nextLock;
 
 	bool enableColdClear = true;
@@ -201,7 +202,7 @@ public:
 
 	void updateControlHint()
 	{
-		const CCPlanPlacement* firstPlan = cc.GetPlan(0);
+		const CCPlanPlacement* firstPlan = &ccBestPlan[0];
 		if (firstPlan == nullptr) return;
 		if (firstPlan->piece == game.GetCurrentPiece().type)
 		{
@@ -268,6 +269,15 @@ public:
 	void onPieceMoved()
 	{
 		game.GetSRSInfo(infoCW, infoCCW);
+		if (!exactCCMove && enableColdClear)
+		{
+			BlockCoordinates co =  game.GetGhost().GetBlockCoordinates();
+			numPlans = cc.Query(ccm, co.x, co.y, ccBestPlan, ARRAYSIZE(ccBestPlan));
+			if (numPlans == 0)
+			{
+				Fatal(L"CCがパニックに陥た");
+			}
+		}
 	}
 
 	void actionResetPiece()
@@ -319,10 +329,19 @@ public:
 
 	void actionHardDrop()
 	{
-		bool match = TestGhost(game.GetGhost(), ccm);
-		if (exactCCMove && enableColdClear)
+		auto ghost = game.GetGhost();
+		bool match = TestGhost(ghost, ccm);
+		if (enableColdClear)
 		{
-			if (ccm.hold != holdPressed || !match) return;
+			if (exactCCMove)
+			{
+				if (ccm.hold != holdPressed || !match) return;
+			}
+			else
+			{
+				BlockCoordinates co = game.GetGhost().GetBlockCoordinates();
+				cc.Advance(co.x, co.y);
+			}
 		}
 		game.LockCurrentPiece();
 		bool cleared = game.ClearLines();
@@ -353,23 +372,26 @@ public:
 		}
 
 		running = game.SpawnCurrentPiece();
-		onPieceMoved();
+		
 		if (!running)
 		{
 			Fatal(L"ゲームオーバー");
 			return;
 		}
 		pickNext();
-		if (enableColdClear)
+		if (enableColdClear && exactCCMove)
 		{
 			std::unique_lock<std::mutex> l(nextLock);
-			numPlans = cc.Next(ccm, incomingGarbage);
+			numPlans = cc.Next(ccm, incomingGarbage, ccBestPlan, ARRAYSIZE(ccBestPlan));
 			if (numPlans == 0)
 			{
 				Fatal(L"CCがパニックに陥た");
 			}
 			updateControlHint();
 		}
+
+
+		onPieceMoved();
 
 		QueryPerformanceCounter(&last);
 		holdPressed = false;
@@ -406,9 +428,17 @@ public:
 			game.PushBackCurrentPiece();
 			hardReset();
 			enableColdClear = true;
-			numPlans = cc.Next(ccm, 0);
-			updateControlHint();
-			game.SpawnCurrentPiece();
+			if (exactCCMove)
+			{
+				numPlans = cc.Next(ccm, 0, ccBestPlan, ARRAYSIZE(ccBestPlan));
+				updateControlHint();
+				game.SpawnCurrentPiece();
+			}
+			else
+			{
+				game.SpawnCurrentPiece();
+				onPieceMoved();
+			}
 		}
 	}
 
@@ -488,14 +518,24 @@ public:
 		engine->FinishDraw();
 		Sleep(delay);
 
-		numPlans = cc.Next(ccm, 0);
-		updateControlHint();
+		if (exactCCMove)
+		{
+			numPlans = cc.Next(ccm, 0, ccBestPlan, ARRAYSIZE(ccBestPlan));
+			updateControlHint();
+		}
+		else
+		{
+			ctrlHint.actions.clear();
+			ctrlHint.cost = 0;
+		}
+
 		QueryPerformanceCounter(&last);
 
 		game.SpawnCurrentPiece();
 		onPieceMoved();
 		WCHAR strNodes[0x20];
 		WCHAR strValue[0x20];
+		WCHAR strDiff[0x20];
 		WCHAR strPieceIndex[0x20];
 		WCHAR strCombo[0x20];
 		WCHAR strGarbage[0x20];
@@ -507,6 +547,7 @@ public:
 		{
 			strNodes,
 			strValue,
+			strDiff,
 			strPieceIndex,
 			strCombo,
 			strGarbage,
@@ -515,7 +556,7 @@ public:
 			strCCW,
 			strMoveCost,
 		};
-		const int fixedStats = 9;
+		const int fixedStats = 10;
 		while (running)
 		{
 			QueryPerformanceCounter(&now);
@@ -539,7 +580,7 @@ public:
 				// Lock for plans. Don't draw if CC is updating the plans.
 				{
 					std::unique_lock<std::mutex> l(nextLock);
-					const CCPlanPlacement* p = cc.GetPlan(0);
+					const CCPlanPlacement* p = &ccBestPlan[0];
 					engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, PieceHint, alpha);
 					int n = numPlans;
 					if (maxPlan > 0 && n > maxPlan)
@@ -549,7 +590,7 @@ public:
 					for (int i = 1; i < n; i++)
 					{
 						alpha = (1 - planOpacity) / i + planOpacity;
-						p = cc.GetPlan(i);
+						p = &ccBestPlan[i];
 						engine->DrawHint((unsigned char*)p->expected_x, (unsigned char*)p->expected_y, (MinoType)p->piece, alpha);
 					}
 
@@ -563,7 +604,9 @@ public:
 			}
 
 			wsprintf(strNodes, L"ノード数: %d", ccm.nodes);
-			wsprintf(strValue, L"評価値: %d", ccm.evaluation_result);
+			wsprintf(strValue, L"絶対評価値: %d", ccm.evaluation_result);
+			wsprintf(strDiff, L"相対評価値: %d", ccm.evaluation_diff);
+
 			wsprintf(strPieceIndex, L"7種残り: %d", 7 - game.GetPieceIndex() % 7);
 
 			if (combo > 1)

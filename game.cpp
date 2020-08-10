@@ -148,6 +148,27 @@ const BlockPosition& Tetrimino::GetPosition() const
 	return masks[type][state];
 }
 
+BlockCoordinates Maneru::Tetrimino::GetBlockCoordinates() const
+{
+	BlockCoordinates co = {};
+	int count = 0;
+	const BlockPosition& mask = masks[type][state];
+	for (int x = 0; x < 4; x++)
+	{
+		for (int y = 0; y < 4; y++)
+		{
+			if (mask[y] & (1 << x))
+			{
+				co.x[count] = x + px;
+				co.y[count] = y + py;
+				count++;
+			}
+		}
+	}
+
+	return co;
+}
+
 TetrisGame::TetrisGame()
 {
 	memset(board, 0, sizeof(board));

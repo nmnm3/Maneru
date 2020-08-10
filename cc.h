@@ -17,16 +17,15 @@ public:
 	void Start(bool is20g);
 	void Stop();
 	void AddPiece(int p);
-	int Next(CCMove& m, int incoming);
+	int Query(CCMove& m, unsigned char* x, unsigned char* y, CCPlanPlacement* plans, int numPlans);
+	void Advance(unsigned char* x, unsigned char* y);
+	int Next(CCMove& m, int incoming, CCPlanPlacement* plans, int numPlans);
 	void HardReset(CCPiece* hold, bool* board, int remainBagMask, int combo);
 	void SoftReset(bool* board, int combo);
-	const CCPlanPlacement* GetPlan(int index) const;
 private:
 	CCAsyncBot* bot;
 	CCOptions options;
 	CCWeights weights;
-	CCPlanPlacement plans[MAX_NEXT_MOVE];
-	int validPlans;
 };
 
 }

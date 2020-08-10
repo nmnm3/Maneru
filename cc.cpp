@@ -3,7 +3,7 @@
 using namespace Maneru;
 #pragma comment (lib, "cold_clear.dll.lib")
 
-CCBot::CCBot() : plans(), validPlans(0)
+CCBot::CCBot()
 {
 	ConfigNode n = GetGlobalConfig()->GetNode("cc");
 
@@ -56,10 +56,51 @@ void CCBot::AddPiece(int p)
 	if (bot) cc_add_next_piece_async(bot, (CCPiece)p);
 }
 
-int CCBot::Next(CCMove & m, int incoming)
+int CCBot::Query(CCMove& m, unsigned char* x, unsigned char* y, CCPlanPlacement* plans, int numPlans)
+{
+	uint32_t size = numPlans;
+	CCBotPollStatus status = cc_query_next_move(bot, x, y, &m, plans, &size);
+	if (status == CC_BOT_DEAD) return 0;
+	int ymap[40];
+	for (int i = 0; i < 40; i++)
+	{
+		ymap[i] = i;
+	}
+
+	for (int i = 0; i < size; i++)
+	{
+		CCPlanPlacement& p = plans[i];
+		for (int j = 0; j < 4; j++)
+		{
+			p.expected_y[j] = ymap[p.expected_y[j]];
+		}
+		for (int j = 3; j >= 0; j--)
+		{
+			int c = p.cleared_lines[j];
+			if (c == -1) continue;
+			if (c < 0 || c > 40)
+			{
+				return 0;
+			}
+
+			for (int k = c; k < 39; k++)
+			{
+				ymap[k] = ymap[k + 1];
+			}
+		}
+	}
+	return size;
+}
+
+void CCBot::Advance(unsigned char* x, unsigned char* y)
+{
+	cc_advance_move(bot, x, y);
+}
+
+int CCBot::Next(CCMove & m, int incoming, CCPlanPlacement* plans, int numPlans)
 {
 	cc_request_next_move(bot, incoming);
-	uint32_t size = MAX_NEXT_MOVE;
+	uint32_t size = numPlans;
 	CCBotPollStatus status = cc_block_next_move(bot, &m, plans, &size);
 	if (status != CC_MOVE_PROVIDED)
 	{
@@ -94,7 +135,6 @@ int CCBot::Next(CCMove & m, int incoming)
 			}
 		}
 	}
-	validPlans = size;
 	return size;
 }
 
@@ -107,13 +147,4 @@ void CCBot::HardReset(CCPiece * hold, bool* board, int remainBagMask, int combo)
 void CCBot::SoftReset(bool * board, int combo)
 {
 	if (bot) cc_reset_async(bot, board, false, combo);
-}
-
-const CCPlanPlacement* CCBot::GetPlan(int index) const
-{
-	if (index < validPlans)
-	{
-		return plans + index;
-	}
-	return nullptr;
 }
