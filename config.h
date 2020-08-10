@@ -3,37 +3,6 @@
 #include <string>
 namespace Maneru
 {
-struct ControlConfig
-{
-	float repeatDelay;
-	float repeatSpeed;
-
-	// Button mapping
-	const char *a, *b, *x, *y;
-	const char *left, *right, *up, *down;
-	const char *lb, *rb;
-	const char *menu, *start;
-};
-
-struct ColdClearConfig
-{
-	bool use_hold;
-	bool speculate;
-	bool pcloop;
-	uint32_t min_nodes;
-	uint32_t max_nodes;
-	uint32_t threads;
-};
-
-struct GraphicConfig
-{
-	int fps;
-};
-
-struct GameConfig
-{
-	int test;
-};
 
 enum ConfigValueKind
 {
@@ -41,13 +10,6 @@ enum ConfigValueKind
 	Int,
 	Float,
 	Bool,
-};
-
-struct Config
-{
-	GraphicConfig graphic;
-	ColdClearConfig cc;
-	ControlConfig ctrl;
 };
 
 template <typename T>
